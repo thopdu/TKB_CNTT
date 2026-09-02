@@ -96,14 +96,14 @@ git remote add origin https://github.com/<tai-khoan-github>/<ten-repository>.git
 git push -u origin main
 ```
 
-### 4.2. Clone về Ubuntu Server
-Trên Ubuntu Server, tạo thư mục lưu trữ ứng dụng (ví dụ `/var/www/tkb-pdu`):
+### 4.2. Clone hoặc Upload về Ubuntu Server
+Trên Ubuntu Server, tạo thư mục lưu trữ ứng dụng `/var/www/tkb-pdu/TKB_CNTT`:
 ```bash
-sudo mkdir -p /var/www/tkb-pdu
-sudo chown -R $USER:$USER /var/www/tkb-pdu
-cd /var/www/tkb-pdu
+sudo mkdir -p /var/www/tkb-pdu/TKB_CNTT
+sudo chown -R $USER:$USER /var/www/tkb-pdu/TKB_CNTT
+cd /var/www/tkb-pdu/TKB_CNTT
 
-# Clone mã nguồn
+# Nếu clone qua Git:
 git clone https://github.com/<tai-khoan-github>/<ten-repository>.git .
 ```
 
@@ -113,6 +113,7 @@ git clone https://github.com/<tai-khoan-github>/<ten-repository>.git .
 
 ### 5.1. Tạo file cấu hình `.env`
 ```bash
+cd /var/www/tkb-pdu/TKB_CNTT
 cp .env.example .env
 nano .env
 ```
@@ -254,14 +255,14 @@ sudo certbot renew --dry-run
 
 Mỗi khi bạn có code mới đẩy lên GitHub, trên server bạn chỉ cần chạy file `deploy.sh` có sẵn:
 ```bash
-cd /var/www/tkb-pdu
+cd /var/www/tkb-pdu/TKB_CNTT
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
 Hoặc chạy thủ công các bước:
 ```bash
-cd /var/www/tkb-pdu
+cd /var/www/tkb-pdu/TKB_CNTT
 git pull origin main
 npm install
 npm run build
