@@ -1072,12 +1072,11 @@ export const TimetableView: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="mt-2 pt-1.5 border-t border-blue-200 flex items-center justify-between">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-700 text-white rounded-md text-[10px] font-black shadow-2xs">
-                                <MapPin className="w-2.5 h-2.5" />
-                                {entry.room}
+                            <div className="mt-2 pt-1.5 border-t border-blue-200 flex items-center justify-center">
+                              <span className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1 bg-blue-700 text-white rounded-lg text-[11px] font-black shadow-xs tracking-wide">
+                                <MapPin className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{entry.room}</span>
                               </span>
-                              <span className="text-[10px] font-bold text-blue-800">Nhà H</span>
                             </div>
                           </div>
                         ) : (
@@ -1123,12 +1122,11 @@ export const TimetableView: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="mt-2 pt-1.5 border-t border-emerald-200 flex items-center justify-between">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-700 text-white rounded-md text-[10px] font-black shadow-2xs">
-                                <MapPin className="w-2.5 h-2.5" />
-                                {entry.room}
+                            <div className="mt-2 pt-1.5 border-t border-emerald-200 flex items-center justify-center">
+                              <span className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1 bg-emerald-700 text-white rounded-lg text-[11px] font-black shadow-xs tracking-wide">
+                                <MapPin className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{entry.room}</span>
                               </span>
-                              <span className="text-[10px] font-bold text-emerald-800">Nhà H</span>
                             </div>
                           </div>
                         ) : (

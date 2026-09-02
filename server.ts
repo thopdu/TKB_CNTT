@@ -297,6 +297,157 @@ async function startServer() {
     });
   });
 
+  // --- GOOGLE WORKSPACE SSO (PASSWORDLESS) ---
+  app.post('/api/auth/google-sso', (req: Request, res: Response) => {
+    try {
+      const { credential, email: providedEmail, name: providedName, picture } = req.body;
+      let targetEmail = '';
+      let targetName = '';
+
+      // If Google JWT Credential ID Token is provided, decode payload
+      if (credential && typeof credential === 'string') {
+        try {
+          const parts = credential.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+            if (payload.email) {
+              targetEmail = payload.email.trim().toLowerCase();
+            }
+            if (payload.name) {
+              targetName = payload.name.trim();
+            }
+          }
+        } catch (jwtErr) {
+          console.error('Error decoding Google JWT credential:', jwtErr);
+        }
+      }
+
+      if (!targetEmail && providedEmail) {
+        targetEmail = String(providedEmail).trim().toLowerCase();
+      }
+      if (!targetName && providedName) {
+        targetName = String(providedName).trim();
+      }
+
+      if (!targetEmail) {
+        res.status(400).json({
+          success: false,
+          message: 'Không tìm thấy thông tin email từ tài khoản Google Workspace.',
+        });
+        return;
+      }
+
+      // STRICT DOMAIN RESTRICTION: Only accept @pdu.edu.vn or @*.pdu.edu.vn (e.g. @student.pdu.edu.vn)
+      const isPduDomain = targetEmail.endsWith('@pdu.edu.vn') || targetEmail.endsWith('.pdu.edu.vn');
+      if (!isPduDomain) {
+        res.status(403).json({
+          success: false,
+          message: `Email "${targetEmail}" không thuộc miền Google Doanh nghiệp PDU (@pdu.edu.vn). Vui lòng chọn đúng tài khoản Google của trường Đại học Phạm Văn Đồng.`,
+        });
+        return;
+      }
+
+      const usernamePrefix = targetEmail.split('@')[0];
+
+      // Find user
+      let foundUser = db.users.find(
+        (u) =>
+          u.email.toLowerCase() === targetEmail ||
+          u.username.toLowerCase() === usernamePrefix
+      );
+
+      // SPECIAL RULE: pvantho@pdu.edu.vn is always the primary ADMIN
+      if (targetEmail === 'pvantho@pdu.edu.vn' || usernamePrefix === 'pvantho') {
+        if (!foundUser) {
+          foundUser = {
+            id: 'usr_admin',
+            username: 'pvantho',
+            fullName: targetName || 'ThS. Phạm Văn Thơ (Admin)',
+            email: 'pvantho@pdu.edu.vn',
+            role: 'ADMIN',
+            department: 'Khoa Công nghệ Thông tin - PDU',
+            phone: '0988765432',
+            entityId: 'gv_tho',
+            status: 'ACTIVE',
+            createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            lastLogin: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          };
+          db.users.unshift(foundUser);
+        } else {
+          foundUser.role = 'ADMIN';
+          foundUser.email = 'pvantho@pdu.edu.vn';
+          if (targetName && (!foundUser.fullName || foundUser.fullName === 'pvantho')) {
+            foundUser.fullName = targetName;
+          }
+        }
+      }
+
+      // If user not in database: Auto-create user with DEFAULT ROLE: 'STUDENT'
+      if (!foundUser) {
+        const displayName =
+          targetName ||
+          (usernamePrefix.startsWith('sv_') || usernamePrefix.startsWith('sv.')
+            ? `Sinh viên (${usernamePrefix.toUpperCase()})`
+            : `Người dùng PDU (${usernamePrefix})`);
+
+        foundUser = {
+          id: 'usr_' + Date.now(),
+          username: usernamePrefix,
+          fullName: displayName,
+          email: targetEmail,
+          role: 'STUDENT', // Default is STUDENT
+          department: 'Trường Đại học Phạm Văn Đồng',
+          phone: '',
+          status: 'ACTIVE',
+          createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+          lastLogin: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        };
+
+        db.users.push(foundUser);
+        db.logAudit(
+          'usr_admin',
+          'Hệ thống PDU (Google SSO)',
+          'CREATE',
+          'User',
+          undefined,
+          `Tài khoản Google Doanh nghiệp mới "${targetEmail}" (${foundUser.fullName}) đăng nhập lần đầu, tự động gán vai trò Sinh viên (STUDENT)`
+        );
+      }
+
+      // Check if user is active
+      if (foundUser.status === 'INACTIVE') {
+        res.status(403).json({
+          success: false,
+          message: 'Tài khoản đã bị tạm khóa. Vui lòng liên hệ Quản trị viên (pvantho@pdu.edu.vn).',
+        });
+        return;
+      }
+
+      foundUser.lastLogin = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      db.logAudit(
+        foundUser.id,
+        foundUser.fullName,
+        'LOGIN',
+        'User',
+        undefined,
+        `Đăng nhập thành công qua Google Workspace SSO: ${foundUser.email} (Vai trò: ${foundUser.role})`
+      );
+
+      res.json({
+        success: true,
+        token: 'pdu_google_token_' + foundUser.id,
+        user: foundUser,
+        authMethod: 'GOOGLE_WORKSPACE_SSO',
+      });
+    } catch (err: any) {
+      console.error('Google SSO error:', err);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi xử lý đăng nhập Google Workspace: ' + err.message,
+      });
+    }
+  });
+
   app.get('/api/auth/users', (req: Request, res: Response) => {
     res.json(db.users);
   });

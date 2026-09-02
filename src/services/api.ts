@@ -82,6 +82,23 @@ export const api = {
     }
   },
 
+  async loginWithGoogle(params: { credential?: string; email?: string; name?: string; picture?: string }): Promise<{ success: boolean; token?: string; user?: User; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/auth/google-sso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const data = await res.json().catch(() => ({ success: false, message: 'Lỗi phản hồi máy chủ' }));
+      if (!res.ok) {
+        return { success: false, message: data.message || data.error || 'Đăng nhập Google không thành công' };
+      }
+      return data;
+    } catch (err: any) {
+      return { success: false, message: 'Lỗi kết nối máy chủ xác thực Google: ' + err.message };
+    }
+  },
+
   async getUsers(): Promise<User[]> {
     return safeFetchJson<User[]>(`${API_BASE}/users`, undefined, []);
   },

@@ -14,6 +14,7 @@ interface AuthContextType {
   setActiveTab: (tab: string) => void;
   switchRole: (role: UserRole) => void;
   login: (username: string, password?: string) => Promise<boolean>;
+  loginGoogle: (params: { credential?: string; email?: string; name?: string; picture?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
@@ -124,6 +125,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginGoogle = async (params: {
+    credential?: string;
+    email?: string;
+    name?: string;
+    picture?: string;
+  }): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await api.loginWithGoogle(params);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        setCurrentRole(res.user.role);
+        localStorage.setItem('pdu_user', JSON.stringify(res.user));
+        localStorage.setItem('pdu_role', res.user.role);
+        setIsLoginModalOpen(false);
+        setIsRoleLandingOpen(false);
+        setLoginTargetRole(null);
+
+        if (res.user.role === 'ADMIN') {
+          setActiveTab('data_sources');
+        } else if (res.user.role === 'MANAGER') {
+          setActiveTab('manager_dashboard');
+        } else if (res.user.role === 'LECTURER') {
+          setActiveTab('timetable');
+          if (res.user.entityId) setSelectedLecturerId(res.user.entityId);
+        } else {
+          setActiveTab('timetable');
+          if (res.user.entityId) setSelectedClass(res.user.entityId);
+        }
+        return { success: true };
+      }
+      return { success: false, message: res.message || 'Đăng nhập Google không thành công' };
+    } catch (err: any) {
+      return { success: false, message: err.message || 'Lỗi kết nối xác thực Google' };
+    }
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('pdu_user');
@@ -159,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveTab,
         switchRole,
         login,
+        loginGoogle,
         logout,
         isLoginModalOpen,
         setIsLoginModalOpen,
