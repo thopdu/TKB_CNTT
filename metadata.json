@@ -1,0 +1,6 @@
+{
+  "name": "PDU Academic - Tra cứu TKB & Quản trị đào tạo",
+  "description": "Hệ thống tra cứu thời khóa biểu, lịch thi, thống kê đào tạo và trợ lý học vụ AI Khoa CNTT - Đại học Phạm Văn Đồng (PDU)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

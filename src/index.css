@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-size: 16.5px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #1e293b;
+  }
+
+  p {
+    font-size: 15px;
+  }
+
+  h1 {
+    letter-spacing: -0.02em;
+  }
+
+  /* Make form controls, tables, and buttons comfortably legible */
+  input, select, textarea, button {
+    font-family: inherit;
+  }
+
+  button, select, [role="button"], a {
+    cursor: pointer;
+  }
+}
