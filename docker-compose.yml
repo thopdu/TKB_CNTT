@@ -6,10 +6,10 @@ services:
     container_name: pdu-academic-app
     restart: always
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3005:3005"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3005
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
     env_file:

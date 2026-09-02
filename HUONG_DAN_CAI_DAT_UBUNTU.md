@@ -118,7 +118,7 @@ nano .env
 ```
 Nội dung file `.env`:
 ```env
-PORT=3000
+PORT=3005
 NODE_ENV=production
 APP_URL=https://tkb.pvantho.id.vn
 GEMINI_API_KEY=AIzaSy... (Điền key Gemini của bạn nếu dùng AI học vụ)
@@ -137,10 +137,15 @@ Lệnh build sẽ tạo ra thư mục `dist/` chứa toàn bộ frontend HTML/CS
 
 ## 6. Cấu hình PM2 Quản lý tiến trình
 
-### 6.1. Khởi chạy ứng dụng qua PM2
-Dự án đã có sẵn file cấu hình tối ưu `ecosystem.config.cjs`:
+### 6.1. Khởi chạy ứng dụng qua PM2 (Cổng 3005, Fork Mode, 1 Instance)
+Dự án đã có sẵn file cấu hình tối ưu `ecosystem.config.cjs` (cấu hình `instances: 1`, `exec_mode: 'fork'`, cổng `3005`):
 ```bash
 pm2 start ecosystem.config.cjs --env production
+```
+
+Hoặc nếu muốn chạy trực tiếp bằng câu lệnh PM2:
+```bash
+PORT=3005 pm2 start dist/server.cjs --name "pdu-academic" -i 1 --env NODE_ENV=production
 ```
 
 ### 6.2. Kiểm tra trạng thái ứng dụng
@@ -165,7 +170,7 @@ pm2 save
 sudo nano /etc/nginx/sites-available/tkb.pvantho.id.vn
 ```
 
-Dán nội dung cấu hình sau:
+Dán nội dung cấu hình sau (chuyển tiếp tới cổng 3005):
 ```nginx
 server {
     listen 80;
@@ -182,7 +187,7 @@ server {
     gzip_types text/plain text/css text/xml application/json application/javascript application/rss+xml application/atom+xml image/svg+xml;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:3005;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
