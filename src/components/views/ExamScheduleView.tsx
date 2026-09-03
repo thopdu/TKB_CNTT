@@ -37,6 +37,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { ExamSchedule, StudentClass, Lecturer, Room } from '../../types';
+import { TimetableWeekSelector } from '../TimetableWeekSelector';
 
 // Helper to determine Vietnamese weekday from date string (YYYY-MM-DD)
 interface DayInfo {
@@ -264,6 +265,16 @@ export const ExamScheduleView: React.FC = () => {
       count: val.count,
     }));
   }, [exams]);
+
+  // Weeks formatted for TimetableWeekSelector
+  const examWeeksForSelector = useMemo(() => {
+    return availableWeeks.map((w, idx) => ({
+      weekId: w.key,
+      weekNumber: idx + 1,
+      displayName: `Tuần ${idx + 1 < 10 ? '0' + (idx + 1) : idx + 1}`,
+      title: `${w.label} (${w.count} ca thi)`,
+    }));
+  }, [availableWeeks]);
 
   // Group exams by Monday-Friday columns for Grid view
   const weekdayColumns = useMemo(() => {
@@ -758,68 +769,59 @@ export const ExamScheduleView: React.FC = () => {
 
         {/* Secondary Sub-Toolbar for Grid Mode: Week Selector, Session Toggle & Weekend Checkbox */}
         {viewMode === 'grid' && (
-          <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center flex-wrap gap-2.5">
-              <span className="font-bold text-blue-950 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-blue-700" />
-                <span>Chọn tuần thi:</span>
-              </span>
+          <TimetableWeekSelector
+            weeks={examWeeksForSelector}
+            selectedWeekId={selectedWeek}
+            onSelectWeek={(id) => setSelectedWeek(id)}
+            title="Chọn tuần thi TKB"
+            includeAllOption={true}
+            allOptionLabel="Tất cả các tuần thi"
+            variant="white"
+            actions={
+              <div className="flex items-center flex-wrap gap-2.5">
+                {/* Session Quick Filter */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                  <button
+                    onClick={() => setSessionFilter('ALL')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                      sessionFilter === 'ALL' ? 'bg-blue-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Tất cả ca
+                  </button>
+                  <button
+                    onClick={() => setSessionFilter('MORNING')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                      sessionFilter === 'MORNING' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sun className="w-3 h-3" />
+                    <span>Ca Sáng</span>
+                  </button>
+                  <button
+                    onClick={() => setSessionFilter('AFTERNOON')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                      sessionFilter === 'AFTERNOON' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Sunset className="w-3 h-3" />
+                    <span>Ca Chiều</span>
+                  </button>
+                </div>
 
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-blue-200 rounded-lg font-bold text-blue-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="ALL">Tất cả các tuần thi (Tổng hợp Thứ 2 - Thứ 6)</option>
-                {availableWeeks.map((w) => (
-                  <option key={w.key} value={w.key}>
-                    {w.label} — ({w.count} ca thi)
-                  </option>
-                ))}
-              </select>
-
-              {/* Session Quick Filter */}
-              <div className="flex items-center bg-white p-0.5 rounded-lg border border-blue-200">
-                <button
-                  onClick={() => setSessionFilter('ALL')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition cursor-pointer ${
-                    sessionFilter === 'ALL' ? 'bg-blue-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Tất cả ca
-                </button>
-                <button
-                  onClick={() => setSessionFilter('MORNING')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                    sessionFilter === 'MORNING' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Sun className="w-3 h-3" />
-                  <span>Ca Sáng</span>
-                </button>
-                <button
-                  onClick={() => setSessionFilter('AFTERNOON')}
-                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                    sessionFilter === 'AFTERNOON' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Sunset className="w-3 h-3" />
-                  <span>Ca Chiều</span>
-                </button>
+                {/* Weekend toggle */}
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-slate-700 font-semibold text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-xl border border-slate-200 transition">
+                  <input
+                    type="checkbox"
+                    checked={showWeekend}
+                    onChange={(e) => setShowWeekend(e.target.checked)}
+                    className="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer"
+                  />
+                  <span>Hiện Thứ 7, CN</span>
+                </label>
               </div>
-            </div>
-
-            {/* Weekend toggle */}
-            <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
-              <input
-                type="checkbox"
-                checked={showWeekend}
-                onChange={(e) => setShowWeekend(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded cursor-pointer"
-              />
-              <span>Hiển thị thêm Thứ 7 & CN</span>
-            </label>
-          </div>
+            }
+          />
         )}
 
         {/* Applied Filters Tags */}

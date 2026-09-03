@@ -54,7 +54,16 @@ export const LoginModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Google Sign-In button if Google Identity Services is available
+  // Check if a genuine, valid Google OAuth Client ID has been configured
+  const rawGoogleClientId = (((import.meta as any).env?.VITE_GOOGLE_CLIENT_ID as string) || '').trim();
+  const hasValidGoogleClientId = Boolean(
+    rawGoogleClientId &&
+    rawGoogleClientId.includes('.apps.googleusercontent.com') &&
+    !rawGoogleClientId.includes('1048293749281') &&
+    !rawGoogleClientId.includes('placeholder')
+  );
+
+  // Initialize Google Sign-In button ONLY if a genuine Google Client ID is configured
   useEffect(() => {
     if (!isLoginModalOpen) return;
 
@@ -65,16 +74,18 @@ export const LoginModal: React.FC = () => {
     }
     setError('');
 
-    // Try initializing Google One Tap / GIS button
+    // If no real Google Client ID is provided, skip GIS initialization to prevent 403 errors and FedCM prompt failures
+    if (!hasValidGoogleClientId) return;
+
     const initGoogleGsi = () => {
-      const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '1048293749281-pdu-academic.apps.googleusercontent.com';
       if (window.google?.accounts?.id) {
         try {
           window.google.accounts.id.initialize({
-            client_id: googleClientId,
+            client_id: rawGoogleClientId,
             callback: handleGoogleCredentialResponse,
             auto_select: false,
             cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: true, // Opt-in to FedCM as required by Google Identity Services
             hd: 'pdu.edu.vn', // Restrict to pdu.edu.vn Google Workspace
           });
 
@@ -89,14 +100,14 @@ export const LoginModal: React.FC = () => {
             });
           }
         } catch (gErr) {
-          console.log('Google Identity Services note:', gErr);
+          console.warn('Google Identity Services notice:', gErr);
         }
       }
     };
 
     const timer = setTimeout(initGoogleGsi, 300);
     return () => clearTimeout(timer);
-  }, [loginTargetRole, isLoginModalOpen]);
+  }, [loginTargetRole, isLoginModalOpen, hasValidGoogleClientId, rawGoogleClientId]);
 
   if (!isLoginModalOpen) return null;
 
@@ -124,11 +135,7 @@ export const LoginModal: React.FC = () => {
 
     let targetEmail = emailInput.trim().toLowerCase();
     if (!targetEmail) {
-      if (loginTargetRole === 'ADMIN') {
-        targetEmail = 'pvantho@pdu.edu.vn';
-      } else {
-        targetEmail = 'pvantho@pdu.edu.vn'; // Default recommended account
-      }
+      targetEmail = 'pvantho@pdu.edu.vn'; // Default to admin email
     }
 
     // Auto append domain if not present
@@ -144,37 +151,15 @@ export const LoginModal: React.FC = () => {
 
     setIsLoading(true);
 
-    // If GIS popup prompt is available, try prompt
-    if (window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // Fallback to server-side Google SSO verification
-            loginGoogle({ email: targetEmail })
-              .then((res) => {
-                if (!res.success) setError(res.message || 'Đăng nhập thất bại');
-              })
-              .catch((err) => setError(err.message))
-              .finally(() => setIsLoading(false));
-          }
-        });
-      } catch {
-        const res = await loginGoogle({ email: targetEmail });
-        if (!res.success) setError(res.message || 'Đăng nhập thất bại');
-        setIsLoading(false);
+    try {
+      const res = await loginGoogle({ email: targetEmail });
+      if (!res.success) {
+        setError(res.message || 'Đăng nhập không thành công.');
       }
-    } else {
-      // Direct passwordless authentication with PDU Google Workspace Account
-      try {
-        const res = await loginGoogle({ email: targetEmail });
-        if (!res.success) {
-          setError(res.message || 'Đăng nhập không thành công.');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Lỗi kết nối xác thực Google.');
-      } finally {
-        setIsLoading(false);
-      }
+    } catch (err: any) {
+      setError(err.message || 'Lỗi kết nối xác thực Google.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -229,13 +214,22 @@ export const LoginModal: React.FC = () => {
 
         {/* Modal Header */}
         <div className="p-6 text-center border-b border-slate-100 bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/50">
-          <div className="w-14 h-14 rounded-2xl bg-[#0C2340] text-white flex items-center justify-center mx-auto mb-3 shadow-md shadow-blue-900/20">
-            {loginTargetRole === 'ADMIN' ? (
-              <Shield className="w-7 h-7 text-purple-300" />
-            ) : loginTargetRole === 'MANAGER' ? (
-              <Layers className="w-7 h-7 text-amber-300" />
-            ) : (
-              <GoogleLogoSvg className="w-7 h-7" />
+          <div className="flex items-center justify-center gap-2.5 mx-auto mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-md border border-slate-200/90 flex items-center justify-center">
+              <img
+                src="/pdu-emblem.png"
+                alt="Logo Đại học Phạm Văn Đồng"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            {loginTargetRole !== 'STUDENT' && (
+              <div className="w-14 h-14 rounded-2xl bg-[#0C2340] text-white flex items-center justify-center shadow-md shadow-blue-900/20">
+                {loginTargetRole === 'ADMIN' ? (
+                  <Shield className="w-7 h-7 text-purple-300" />
+                ) : (
+                  <Layers className="w-7 h-7 text-amber-300" />
+                )}
+              </div>
             )}
           </div>
           <h3 className="text-xl font-black text-slate-900 tracking-tight">Đăng nhập PDU Academic</h3>
@@ -294,8 +288,10 @@ export const LoginModal: React.FC = () => {
               <span>Đăng nhập với Google Doanh nghiệp (@pdu.edu.vn)</span>
             </button>
 
-            {/* Hidden container for rendered Google GIS button if available */}
-            <div ref={googleBtnRef} className="flex justify-center empty:hidden"></div>
+            {/* Rendered Google GIS button if a valid Client ID is configured */}
+            {hasValidGoogleClientId && (
+              <div ref={googleBtnRef} className="flex justify-center empty:hidden"></div>
+            )}
           </div>
 
           <div className="relative flex py-1 items-center">

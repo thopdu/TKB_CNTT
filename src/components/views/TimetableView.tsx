@@ -40,6 +40,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { WeeklyTimetableEntry, Lecturer } from '../../types';
+import { TimetableWeekSelector } from '../TimetableWeekSelector';
 
 export const TimetableView: React.FC = () => {
   const { currentRole, currentUser, selectedClass: authSelectedClass, setSelectedClass: setAuthSelectedClass, selectedLecturerId, setSelectedLecturerId, setIsLoginModalOpen, setLoginTargetRole } = useAuth();
@@ -564,73 +565,85 @@ export const TimetableView: React.FC = () => {
         </div>
       )}
 
+      {/* TIMETABLE WEEK SELECTOR */}
+      <TimetableWeekSelector
+        weeks={weeks}
+        selectedWeekId={selectedWeekId}
+        onSelectWeek={(id) => setSelectedWeekId(id)}
+        title="Chọn Tuần TKB"
+        actions={
+          isAdminOrManager ? (
+            <div className="flex items-center gap-1.5 ml-1">
+              {selectedWeekObj && (
+                <button
+                  type="button"
+                  onClick={(e) => handleOpenEditWeekModal(selectedWeekObj, e)}
+                  className="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer text-xs"
+                  title="Sửa tuần đang chọn"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleOpenAddWeekModal}
+                className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition cursor-pointer text-xs"
+                title="Thêm tuần từ Google Sheet"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleAutoSync}
+                disabled={syncing}
+                className="p-1.5 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition cursor-pointer text-xs disabled:opacity-50"
+                title="Đồng bộ lại từ URL PDU"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
+              </button>
+            </div>
+          ) : undefined
+        }
+      />
+
       {/* MAIN TIMETABLE CONTAINER WITH STREAMLINED INTEGRATED CONTROLS */}
       <div
         className="rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5 bg-white"
       >
-        {/* Top Control Bar: Week Selector, Filter Mode, and Tools */}
+        {/* Top Control Bar: Filter Mode, Search and Tools */}
         <div className="flex flex-col gap-4 pb-4 border-b border-slate-100">
-          {/* Row 1: Week Selector + Admin Actions + View & Export tools */}
+          {/* Row 1: Mode Switch & View & Export tools */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Week Selection Pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4 text-blue-600" />
-                <span>Tuần học:</span>
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {weeks.map((w) => {
-                  const isSelected = w.weekId === selectedWeekId;
-                  return (
-                    <button
-                      key={w.weekId}
-                      type="button"
-                      onClick={() => setSelectedWeekId(w.weekId)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-600/20'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/70'
-                      }`}
-                    >
-                      <span>Tuần 0{w.weekNumber}</span>
-                      {w.current && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-500'}`} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {isAdminOrManager && (
-                <div className="flex items-center gap-1.5 ml-1">
-                  {selectedWeekObj && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleOpenEditWeekModal(selectedWeekObj, e)}
-                      className="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer text-xs"
-                      title="Sửa tuần đang chọn"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+            <div className="flex items-center gap-2">
+              {!isStudentRole ? (
+                <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
                   <button
                     type="button"
-                    onClick={handleOpenAddWeekModal}
-                    className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition cursor-pointer text-xs"
-                    title="Thêm tuần từ Google Sheet"
+                    onClick={() => setFilterMode('LECTURER')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                      filterMode === 'LECTURER'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    Theo Giảng viên
                   </button>
                   <button
                     type="button"
-                    onClick={handleAutoSync}
-                    disabled={syncing}
-                    className="p-1.5 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition cursor-pointer text-xs disabled:opacity-50"
-                    title="Đồng bộ lại từ URL PDU"
+                    onClick={() => setFilterMode('CLASS')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                      filterMode === 'CLASS'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
+                    Theo Lớp sinh viên
                   </button>
                 </div>
+              ) : (
+                <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                  Lịch học Lớp Sinh Viên
+                </span>
               )}
             </div>
 

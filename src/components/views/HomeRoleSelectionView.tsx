@@ -22,6 +22,30 @@ export const HomeRoleSelectionView: React.FC = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-200">
+      {/* PDU University Header Banner */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white p-1.5 border border-slate-200 shadow-xs flex items-center justify-center shrink-0">
+            <img
+              src="/pdu-emblem.png"
+              alt="Biểu trưng Trường Đại học Phạm Văn Đồng"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-blue-800">
+              Trường Đại học Phạm Văn Đồng • Khoa Công nghệ Thông tin
+            </div>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mt-0.5">
+              Hệ thống Tra cứu Thời khóa biểu & Quản trị Đào tạo
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Chọn vai trò bên dưới để truy cập nhanh lịch học, phòng thi và công tác điều phối Nhà H
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* 4 Independent Role Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5 sm:gap-5">
         {/* Role: Sinh viên */}

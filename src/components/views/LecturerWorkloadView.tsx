@@ -50,6 +50,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { WorkloadStat, WorkloadSession, Lecturer, Department, User as UserType } from '../../types';
 import { DepartmentManagementModal } from '../DepartmentManagementModal';
+import { TimetableWeekSelector } from '../TimetableWeekSelector';
 
 // Standard PDU Departments & Academic Units
 const STANDARD_DEPARTMENTS = [
@@ -87,7 +88,6 @@ export const LecturerWorkloadView: React.FC = () => {
   // Timetable weeks & selection
   const [weeks, setWeeks] = useState<any[]>([]);
   const [selectedWeekId, setSelectedWeekId] = useState<string>('week_05');
-  const [weekSearchQuery, setWeekSearchQuery] = useState<string>('');
   
   // Data
   const [workloads, setWorkloads] = useState<WorkloadStat[]>([]);
@@ -191,46 +191,6 @@ export const LecturerWorkloadView: React.FC = () => {
     }
     return weeks.find((w) => w.weekId === selectedWeekId) || weeks[0] || null;
   }, [weeks, selectedWeekId]);
-
-  // All selectable week options
-  const allWeekOptions = useMemo(() => {
-    const options = [
-      { weekId: 'ALL', displayName: 'Cả học kỳ 2' },
-      ...weeks.map((w) => ({
-        weekId: w.weekId,
-        displayName:
-          w.title ||
-          w.weekTitle ||
-          (w.weekNumber
-            ? `Tuần ${w.weekNumber < 10 ? '0' + w.weekNumber : w.weekNumber}`
-            : w.weekId),
-        weekNumber: w.weekNumber,
-      })),
-    ];
-    return options;
-  }, [weeks]);
-
-  // Filtered weeks based on search query
-  const filteredWeeks = useMemo(() => {
-    if (!weekSearchQuery.trim()) return allWeekOptions;
-    const query = weekSearchQuery.toLowerCase().trim();
-    return allWeekOptions.filter((w) =>
-      w.displayName.toLowerCase().includes(query) ||
-      w.weekId.toLowerCase().includes(query)
-    );
-  }, [allWeekOptions, weekSearchQuery]);
-
-  const currentWeekIdx = allWeekOptions.findIndex((w) => w.weekId === selectedWeekId);
-  const handlePrevWeek = () => {
-    if (currentWeekIdx > 0) {
-      setSelectedWeekId(allWeekOptions[currentWeekIdx - 1].weekId);
-    }
-  };
-  const handleNextWeek = () => {
-    if (currentWeekIdx < allWeekOptions.length - 1 && currentWeekIdx >= 0) {
-      setSelectedWeekId(allWeekOptions[currentWeekIdx + 1].weekId);
-    }
-  };
 
   // List of all unique departments from standard list, database departments, lecturers, and workloads
   const allAvailableDepartments = useMemo(() => {
@@ -588,148 +548,57 @@ export const LecturerWorkloadView: React.FC = () => {
         </div>
       )}
 
-      {/* Card: Chọn Thời Khóa Biểu Tuần */}
-      <div className="bg-[#f2f2f2] rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Title & Navigation controls */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2 shrink-0">
-              <CalendarDays className="w-4 h-4 text-blue-600" />
-              Chọn thời khóa biểu tuần
-            </span>
-
-            {/* Navigation buttons: Prev / Next week */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 shrink-0">
-              <button
-                onClick={handlePrevWeek}
-                disabled={currentWeekIdx <= 0}
-                className="cursor-pointer p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                title="Tuần trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleNextWeek}
-                disabled={currentWeekIdx >= allWeekOptions.length - 1 || currentWeekIdx < 0}
-                className="cursor-pointer p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                title="Tuần kế tiếp"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Search box for selecting week */}
-          <div className="relative w-full md:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={weekSearchQuery}
-              onChange={(e) => setWeekSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm tuần (VD: 05, Tuần 1)..."
-              className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400 font-medium"
-            />
-            {weekSearchQuery && (
-              <button
-                onClick={() => setWeekSearchQuery('')}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* List of week buttons - ONLY showing the week names to select */}
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 pt-0.5">
-          {filteredWeeks && filteredWeeks.length > 0 ? (
-            filteredWeeks.map((w) => {
-              const isSelected = selectedWeekId === w.weekId;
-              return (
-                <button
-                  key={w.weekId}
-                  onClick={() => setSelectedWeekId(w.weekId)}
-                  className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${
-                    isSelected
-                      ? 'bg-[#085584] text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {w.displayName}
-                </button>
-              );
-            })
-          ) : (
-            <div className="py-2 text-xs text-slate-500 font-medium italic">
-              Không tìm thấy tuần phù hợp với từ khóa &ldquo;{weekSearchQuery}&rdquo;
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Main Tabs Navigation */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
+      {/* Main Nav-Tabs Navigation */}
+      <div className="border-b border-slate-200">
+        <nav className="-mb-px flex flex-wrap gap-2 sm:gap-4" aria-label="Tabs">
           <button
             onClick={() => setActiveTab('WORKLOAD')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition ${
+            className={`cursor-pointer inline-flex items-center gap-2 py-3 px-4 sm:px-5 border-b-2 font-bold text-xs sm:text-sm transition-all ${
               activeTab === 'WORKLOAD'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'border-blue-600 text-blue-700 bg-white shadow-2xs rounded-t-xl'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            Thống Kê Khối Lượng Giảng Dạy Tuần
+            <BarChart3 className={`w-4 h-4 ${activeTab === 'WORKLOAD' ? 'text-blue-600' : 'text-slate-400'}`} />
+            <span>Thống Kê Khối Lượng Giảng Dạy Tuần</span>
           </button>
 
           <button
             onClick={() => setActiveTab('LECTURERS')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition ${
+            className={`cursor-pointer inline-flex items-center gap-2 py-3 px-4 sm:px-5 border-b-2 font-bold text-xs sm:text-sm transition-all ${
               activeTab === 'LECTURERS'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'border-blue-600 text-blue-700 bg-white shadow-2xs rounded-t-xl'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
           >
-            <GraduationCap className="w-4 h-4" />
-            Lưu & Chỉnh Sửa Thông Tin Giảng Viên ({lecturers.length})
+            <GraduationCap className={`w-4 h-4 ${activeTab === 'LECTURERS' ? 'text-blue-600' : 'text-slate-400'}`} />
+            <span>Lưu & Chỉnh Sửa Thông Tin Giảng Viên</span>
+            <span
+              className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                activeTab === 'LECTURERS'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {lecturers.length}
+            </span>
           </button>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {activeTab === 'LECTURERS' ? (
-            canManageLecturers ? (
-              <button
-                onClick={openAddModal}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm Giảng Viên Mới
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setActionErrorMsg('Chức năng lưu & chỉnh sửa thông tin giảng viên chỉ dành cho Quản lý Đào tạo hoặc Admin.');
-                  setLoginTargetRole('MANAGER');
-                  setIsLoginModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs"
-                title="Đăng nhập với vai trò Quản lý Đào tạo hoặc Admin để thực hiện"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-600" />
-                Đăng nhập QL/Admin để chỉnh sửa
-              </button>
-            )
-          ) : (
-            <div className="text-xs font-semibold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-              Đang xem: <strong className="text-blue-700">{currentWeekObj?.title || 'Tất cả các tuần'}</strong>
-            </div>
-          )}
-        </div>
+        </nav>
       </div>
 
       {/* TAB 1: WORKLOAD STATISTICS */}
       {activeTab === 'WORKLOAD' && (
         <div className="space-y-6">
+          {/* Card: Chọn Thời Khóa Biểu Tuần (Thuộc Tab Thống Kê Giảng Dạy) */}
+          <TimetableWeekSelector
+            weeks={weeks}
+            selectedWeekId={selectedWeekId}
+            onSelectWeek={(id) => setSelectedWeekId(id)}
+            title="Chọn thời khóa biểu tuần"
+            includeAllOption={true}
+            allOptionLabel="Cả học kỳ 2"
+            variant="gray"
+          />
           {/* Filter Bar */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -1002,12 +871,12 @@ export const LecturerWorkloadView: React.FC = () => {
         <div className="space-y-6">
           {/* Smart Auto-Add Banner - Chỉ hiển thị với vai trò Quản lý Đào tạo hoặc Admin */}
           {canManageLecturers && (
-            <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-3xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-3xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-hidden">
+              <div className="flex items-start gap-3.5 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-slate-900">
                     Cơ Chế Tự Động Quét & Thêm Giảng Viên Mới (Thầy / Cô)
                   </h3>
@@ -1016,20 +885,20 @@ export const LecturerWorkloadView: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 max-w-full">
                 <button
                   onClick={() => setIsDeptModalOpen(true)}
-                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold shrink-0 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3.5 py-2 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                   title="Thêm, sửa, xóa Bộ môn / Đơn vị phụ trách"
                 >
-                  <Building2 className="w-4 h-4 text-indigo-600" />
+                  <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
                   Quản Lý Bộ Môn ({departments.length})
                 </button>
                 <button
                   onClick={openAddModal}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 shrink-0" />
                   Thêm Thầy/Cô Mới
                 </button>
               </div>
@@ -1172,18 +1041,8 @@ export const LecturerWorkloadView: React.FC = () => {
                                 {isThay ? 'Thầy' : isCo ? 'Cô' : lec.fullName.slice(-2)}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                                  <span>{lec.fullName}</span>
-                                  {isThay && (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded border border-blue-200">
-                                      Thầy
-                                    </span>
-                                  )}
-                                  {isCo && (
-                                    <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-50 text-rose-700 rounded border border-rose-200">
-                                      Cô
-                                    </span>
-                                  )}
+                                <div className="font-bold text-slate-900 text-sm">
+                                  {lec.fullName}
                                 </div>
                                 <div className="text-[11px] text-slate-400 font-mono mt-0.5">ID: {lec.id}</div>
                               </div>

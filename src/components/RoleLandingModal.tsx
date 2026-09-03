@@ -31,9 +31,18 @@ export const RoleLandingModal: React.FC = () => {
           <div className="absolute -top-12 -right-12 w-44 h-44 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-200 mb-3 border border-white/10">
-            <Building2 className="w-3.5 h-3.5 text-blue-300" />
-            Trường Đại học Phạm Văn Đồng • Khoa CNTT
+          <div className="flex flex-col items-center justify-center mb-3">
+            <div className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-lg border border-white/30 flex items-center justify-center mb-2.5">
+              <img
+                src="/pdu-emblem.png"
+                alt="Logo Đại học Phạm Văn Đồng"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-200 border border-white/10">
+              <Building2 className="w-3.5 h-3.5 text-blue-300" />
+              Trường Đại học Phạm Văn Đồng • Khoa CNTT
+            </div>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">PDU ACADEMIC</h2>

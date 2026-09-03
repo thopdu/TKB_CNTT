@@ -15,12 +15,12 @@ import {
   BuildingHConflictEvaluation,
   BuildingHSessionSlot,
 } from '../../types';
+import { TimetableWeekSelector } from '../TimetableWeekSelector';
 
 export const BuildingHView: React.FC = () => {
   // Timetable Weeks & Conflict Evaluation State
   const [weeks, setWeeks] = useState<any[]>([]);
   const [selectedWeekId, setSelectedWeekId] = useState<string>('week_05');
-  const [weekSearchQuery, setWeekSearchQuery] = useState<string>('');
   const [conflictEval, setConflictEval] = useState<BuildingHConflictEvaluation | null>(null);
   const [loadingEval, setLoadingEval] = useState<boolean>(true);
 
@@ -104,37 +104,6 @@ export const BuildingHView: React.FC = () => {
     loadConflictData(weekId);
   };
 
-  // Filtered weeks for search
-  const filteredWeeks = useMemo(() => {
-    if (!weeks || weeks.length === 0) return [];
-    if (!weekSearchQuery.trim()) return weeks;
-    const query = weekSearchQuery.toLowerCase().trim();
-    return weeks.filter((w) => {
-      const title = (w.title || '').toLowerCase();
-      const weekTitle = (w.weekTitle || '').toLowerCase();
-      const weekNum = String(w.weekNumber || '');
-      const weekId = (w.weekId || '').toLowerCase();
-      return (
-        title.includes(query) ||
-        weekTitle.includes(query) ||
-        weekNum.includes(query) ||
-        weekId.includes(query)
-      );
-    });
-  }, [weeks, weekSearchQuery]);
-
-  const currentWeekIdx = weeks.findIndex((w) => w.weekId === selectedWeekId);
-  const handlePrevWeek = () => {
-    if (currentWeekIdx > 0) {
-      handleSelectWeek(weeks[currentWeekIdx - 1].weekId);
-    }
-  };
-  const handleNextWeek = () => {
-    if (currentWeekIdx < weeks.length - 1 && currentWeekIdx >= 0) {
-      handleSelectWeek(weeks[currentWeekIdx + 1].weekId);
-    }
-  };
-
   // Group matrix by roomCode for matrix view
   const matrixByRoom = useMemo(() => {
     const map = new Map<string, BuildingHSessionSlot[]>();
@@ -163,90 +132,13 @@ export const BuildingHView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. CHỌN TUẦN TKB (WEEK SELECTOR WITH NAVIGATION & SEARCH)                 */}
       {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Title & Navigation controls */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2 shrink-0">
-              <CalendarDays className="w-4 h-4 text-blue-600" />
-              Chọn Tuần TKB
-            </span>
-
-            {/* Navigation buttons: Prev / Next week */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 shrink-0">
-              <button
-                onClick={handlePrevWeek}
-                disabled={currentWeekIdx <= 0}
-                className="cursor-pointer p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                title="Tuần trước"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleNextWeek}
-                disabled={currentWeekIdx >= weeks.length - 1 || currentWeekIdx < 0}
-                className="cursor-pointer p-1.5 rounded-lg hover:bg-white text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
-                title="Tuần kế tiếp"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Search box for selecting week if there are many weeks */}
-          <div className="relative w-full md:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={weekSearchQuery}
-              onChange={(e) => setWeekSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm tuần (VD: 05, Tuần 1)..."
-              className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400 font-medium"
-            />
-            {weekSearchQuery && (
-              <button
-                onClick={() => setWeekSearchQuery('')}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* List of week buttons - ONLY showing the week names to select */}
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 pt-0.5">
-          {filteredWeeks && filteredWeeks.length > 0 ? (
-            filteredWeeks.map((w: any) => {
-              const isSelected = selectedWeekId === w.weekId;
-              const displayName =
-                w.title ||
-                w.weekTitle ||
-                (w.weekNumber
-                  ? `Tuần ${w.weekNumber < 10 ? '0' + w.weekNumber : w.weekNumber}`
-                  : w.weekId);
-
-              return (
-                <button
-                  key={w.weekId}
-                  onClick={() => handleSelectWeek(w.weekId)}
-                  className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${
-                    isSelected
-                      ? 'bg-[#085584] text-white shadow-xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {displayName}
-                </button>
-              );
-            })
-          ) : (
-            <div className="py-2 text-xs text-slate-500 font-medium italic">
-              Không tìm thấy tuần phù hợp với từ khóa &ldquo;{weekSearchQuery}&rdquo;
-            </div>
-          )}
-        </div>
-      </div>
+      <TimetableWeekSelector
+        weeks={weeks}
+        selectedWeekId={selectedWeekId}
+        onSelectWeek={handleSelectWeek}
+        title="Chọn Tuần TKB"
+        variant="white"
+      />
 
       {/* ========================================================================= */}
       {/* 2. MA TRẬN NHIỆT PHÂN BỔ PHÒNG HỌC NHÀ H (THEO THỨ & BUỔI)               */}

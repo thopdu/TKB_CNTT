@@ -171,13 +171,12 @@ export const Header: React.FC<{ onGlobalSearchSelect?: (item: any) => void }> = 
             title="Trường Đại học Phạm Văn Đồng - Chọn vai trò người dùng (Home)"
           >
             {/* Logo Emblem Badge */}
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#f2f2e0] text-[#1c0404] border border-[#dcdcc8] group-hover:border-blue-300 group-hover:scale-105 flex flex-col items-center justify-center shadow-xs transition-all shrink-0">
-              <div className="text-[12px] sm:text-[13px] font-black tracking-tight leading-none text-[#0615b0]">
-                PDU
-              </div>
-              <div className="text-[7px] sm:text-[7.5px] font-semibold text-[#0a3569] uppercase tracking-wider mt-0.5">
-                2007
-              </div>
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white p-1 border border-white/30 group-hover:border-blue-300 group-hover:scale-105 flex items-center justify-center shadow-xs transition-all shrink-0">
+              <img
+                src="/pdu-emblem.png"
+                alt="Logo Trường Đại học Phạm Văn Đồng"
+                className="w-full h-full object-contain"
+              />
             </div>
 
             {/* School & Department Title */}

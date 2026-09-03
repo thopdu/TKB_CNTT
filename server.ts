@@ -4558,6 +4558,9 @@ ${db.exams.map((e) => `• **${e.examDate} (${e.startTime} - ${e.endTime})**: **
     }
   });
 
+  // Serve static assets from public directory
+  app.use(express.static(path.join(process.cwd(), 'public')));
+
   // Vite Middleware for development & static fallback for production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
