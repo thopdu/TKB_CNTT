@@ -7,6 +7,7 @@ import {
   Room,
   Course,
   Lecturer,
+  Department,
   StudentClass,
   SyncLog,
   AuditLog,
@@ -373,6 +374,52 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Lỗi hủy liên kết tài khoản' }));
       throw new Error(err.error || 'Lỗi hủy liên kết tài khoản');
+    }
+    return res.json();
+  },
+
+  // ==========================================
+  // DEPARTMENTS / ACADEMIC UNITS APIS
+  // ==========================================
+  async getDepartments(): Promise<Department[]> {
+    return safeFetchJson<Department[]>(`${API_BASE}/departments`, undefined, []);
+  },
+
+  async createDepartment(data: Partial<Department>): Promise<Department> {
+    const res = await fetch(`${API_BASE}/departments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Lỗi thêm bộ môn / đơn vị mới' }));
+      throw new Error(err.error || 'Lỗi thêm bộ môn / đơn vị mới');
+    }
+    return res.json();
+  },
+
+  async updateDepartment(id: string, data: Partial<Department>): Promise<Department> {
+    const res = await fetch(`${API_BASE}/departments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Lỗi cập nhật bộ môn / đơn vị' }));
+      throw new Error(err.error || 'Lỗi cập nhật bộ môn / đơn vị');
+    }
+    return res.json();
+  },
+
+  async deleteDepartment(id: string, migrateTo?: string): Promise<{ success: boolean; message: string }> {
+    const res = await fetch(`${API_BASE}/departments/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ migrateTo }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Lỗi xóa bộ môn / đơn vị' }));
+      throw new Error(err.error || 'Lỗi xóa bộ môn / đơn vị');
     }
     return res.json();
   },

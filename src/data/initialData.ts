@@ -11,7 +11,8 @@ import {
   ScheduleChange,
   ScheduleConflict,
   User,
-  SyncLog
+  SyncLog,
+  Department
 } from '../types';
 
 export const TIMETABLE_WEEKS = [
@@ -3289,6 +3290,108 @@ export const INITIAL_CLASSES: StudentClass[] = [
   { id: 'cls_dct25a', classCode: 'DCT25A', className: 'Đại học CNTT K25A', cohort: 'K25', major: 'Công nghệ Thông tin', department: 'Khoa CNTT', studentCount: 40 },
   { id: 'cls_dct25b', classCode: 'DCT25B', className: 'Đại học CNTT K25B', cohort: 'K25', major: 'Công nghệ Thông tin', department: 'Khoa CNTT', studentCount: 40 },
   { id: 'cls_dst25', classCode: 'DST25', className: 'Đại học Sư phạm Tin K25', cohort: 'K25', major: 'Sư phạm Tin học', department: 'Khoa CNTT', studentCount: 35 }
+];
+
+export const INITIAL_DEPARTMENTS: Department[] = [
+  {
+    id: 'dept_cnpm',
+    code: 'BM_CNPM',
+    name: 'Bộ môn Công nghệ Phần mềm',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Nguyễn Thị Quỳnh',
+    phone: '0255.3822295',
+    email: 'bm_cnpm@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy Công nghệ phần mềm, Quản lý dự án PM, Kiểm thử và Lập trình ứng dụng.',
+    active: true,
+  },
+  {
+    id: 'dept_htm',
+    code: 'BM_HTM',
+    name: 'Bộ môn Hệ thống & Mạng',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Phạm Văn Thơ',
+    phone: '0255.3822295',
+    email: 'bm_htm@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy Mạng máy tính, Hệ quản trị mạng, Điện toán đám mây và Cơ sở hạ tầng CNTT.',
+    active: true,
+  },
+  {
+    id: 'dept_khmt_ai',
+    code: 'BM_KHMT_AI',
+    name: 'Bộ môn Khoa học Máy tính & AI',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Phạm Văn Lân',
+    phone: '0255.3822295',
+    email: 'bm_ai@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy Trí tuệ nhân tạo, Machine Learning, Xử lý ngôn ngữ tự nhiên và Thị giác máy tính.',
+    active: true,
+  },
+  {
+    id: 'dept_attt',
+    code: 'BM_ATTT',
+    name: 'Bộ môn An toàn Thông tin',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Lê Phước Đảo',
+    phone: '0255.3822295',
+    email: 'bm_attt@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy An ninh mạng, Mật mã học, An toàn hệ thống thông tin và Pháp lý số.',
+    active: true,
+  },
+  {
+    id: 'dept_csdl_httt',
+    code: 'BM_CSDL_HTTT',
+    name: 'Bộ môn Cơ sở Dữ liệu & HTTT',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Trần Quốc Bảo',
+    phone: '0255.3822295',
+    email: 'bm_httt@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy Cơ sở dữ liệu, Hệ thống thông tin quản lý, Big Data và Data Warehouse.',
+    active: true,
+  },
+  {
+    id: 'dept_spt',
+    code: 'BM_SPT',
+    name: 'Bộ môn Sư phạm Tin học',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Phan Thị Kim Vạn',
+    phone: '0255.3822295',
+    email: 'bm_sptin@pdu.edu.vn',
+    description: 'Chuyên trách đào tạo khối ngành Sư phạm Tin học và Phương pháp giảng dạy Tin học trường phổ thông.',
+    active: true,
+  },
+  {
+    id: 'dept_ttud',
+    code: 'BM_TTUD',
+    name: 'Bộ môn Toán - Tin ứng dụng',
+    faculty: 'Khoa Công nghệ Thông tin',
+    headName: 'ThS. Huỳnh Ngọc Ánh',
+    phone: '0255.3822295',
+    email: 'bm_toantin@pdu.edu.vn',
+    description: 'Chuyên trách giảng dạy Toán rời rạc, Giải thuật tính toán, Thống kê và Tối ưu hóa trong CNTT.',
+    active: true,
+  },
+  {
+    id: 'dept_kcntt',
+    code: 'KHOA_CNTT',
+    name: 'Khoa Công nghệ Thông tin',
+    faculty: 'Trường Đại học Phạm Văn Đồng',
+    headName: 'Ban Chủ nhiệm Khoa CNTT',
+    phone: '0255.3822295',
+    email: 'khoacntt@pdu.edu.vn',
+    description: 'Đơn vị quản lý đào tạo cấp Khoa phụ trách các ngành CNTT và Sư phạm Tin học.',
+    active: true,
+  },
+  {
+    id: 'dept_pdt',
+    code: 'PHONG_DT',
+    name: 'Phòng Đào tạo',
+    faculty: 'Trường Đại học Phạm Văn Đồng',
+    headName: 'Phụ trách Phòng Đào tạo',
+    phone: '0255.3822295',
+    email: 'daotao@pdu.edu.vn',
+    description: 'Phòng chức năng quản lý lịch học, thời khóa biểu, phòng học Nhà H và thi cử toàn trường.',
+    active: true,
+  }
 ];
 
 export const INITIAL_LECTURERS: Lecturer[] = [

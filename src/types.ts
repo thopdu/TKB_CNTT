@@ -50,6 +50,19 @@ export interface Room {
   active: boolean;
 }
 
+export interface Department {
+  id: string;
+  code: string; // e.g. "BM_CNPM"
+  name: string; // e.g. "Bộ môn Công nghệ Phần mềm"
+  faculty?: string; // "Khoa Công nghệ Thông tin"
+  headName?: string; // Trưởng bộ môn / Phụ trách đơn vị
+  phone?: string;
+  email?: string;
+  description?: string;
+  active: boolean;
+  lecturerCount?: number;
+}
+
 export interface Course {
   id: string;
   courseCode: string; // e.g. "CNTT301"

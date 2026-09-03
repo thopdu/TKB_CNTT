@@ -17,6 +17,7 @@ import {
   INITIAL_SYNC_LOGS,
   INITIAL_USERS,
   TIMETABLE_WEEKS,
+  INITIAL_DEPARTMENTS,
 } from './src/data/initialData';
 
 import {
@@ -31,6 +32,7 @@ import {
   WorkloadStat,
   User,
   Lecturer,
+  Department,
   AnnouncementNotification,
   CohortOverviewStat,
   CohortClassTimetableSlot,
@@ -66,6 +68,7 @@ class AcademicDatabase {
   public conflicts = [...INITIAL_CONFLICTS];
   public syncLogs = [...INITIAL_SYNC_LOGS];
   public users = [...INITIAL_USERS];
+  public departments = [...INITIAL_DEPARTMENTS];
 
   public notifications: AnnouncementNotification[] = [
     {
@@ -1281,6 +1284,194 @@ async function startServer() {
     );
 
     res.json({ success: true, message: `Đã xóa giảng viên ${deleted.fullName} thành công` });
+  });
+
+  // ==========================================
+  // DEPARTMENTS / ACADEMIC UNITS CRUD APIS
+  // ==========================================
+
+  // Get all departments / academic units (with dynamic lecturer count)
+  app.get('/api/departments', (req: Request, res: Response) => {
+    const list = db.departments.map((dept) => {
+      const count = db.lecturers.filter(
+        (l) => l.department && l.department.trim().toLowerCase() === dept.name.trim().toLowerCase()
+      ).length;
+      return {
+        ...dept,
+        lecturerCount: count,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    res.json(list);
+  });
+
+  // Create Department (Thêm Bộ Môn / Đơn Vị mới) - Quản lý Đào tạo hoặc Admin
+  app.post('/api/departments', (req: Request, res: Response) => {
+    if (!verifyManagerOrAdmin(req, res)) return;
+
+    const { name, code, faculty, headName, phone, email, description, active } = req.body;
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: 'Vui lòng nhập tên bộ môn hoặc đơn vị phụ trách' });
+      return;
+    }
+
+    const trimmedName = name.trim();
+    // Check if name already exists
+    const existing = db.departments.find(
+      (d) => d.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (existing) {
+      res.status(400).json({ error: `Bộ môn / đơn vị "${trimmedName}" đã tồn tại trong hệ thống` });
+      return;
+    }
+
+    const genCode = (code && code.trim()) || `BM_${removeVietnameseTones(trimmedName).toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15)}`;
+    const newDept: Department = {
+      id: `dept_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      code: genCode,
+      name: trimmedName,
+      faculty: (faculty && faculty.trim()) || 'Khoa Công nghệ Thông tin',
+      headName: (headName && headName.trim()) || '',
+      phone: (phone && phone.trim()) || '0255.3822295',
+      email: (email && email.trim()) || '',
+      description: (description && description.trim()) || '',
+      active: active !== undefined ? Boolean(active) : true,
+    };
+
+    db.departments.push(newDept);
+
+    const userRole = (req.headers['x-user-role'] as string) || 'MANAGER';
+    db.logAudit(
+      (req.headers['x-user-id'] as string) || 'usr_manager',
+      userRole === 'ADMIN' ? 'Admin' : 'Quản lý Đào tạo',
+      'CREATE',
+      'Department',
+      newDept.id,
+      `Thêm bộ môn / đơn vị mới: ${newDept.name} (${newDept.code})`
+    );
+
+    res.status(201).json({
+      ...newDept,
+      lecturerCount: 0,
+    });
+  });
+
+  // Update Department (Sửa Bộ Môn / Đơn Vị) - Quản lý Đào tạo hoặc Admin
+  app.put('/api/departments/:id', (req: Request, res: Response) => {
+    if (!verifyManagerOrAdmin(req, res)) return;
+
+    const { id } = req.params;
+    const index = db.departments.findIndex((d) => d.id === id);
+    if (index === -1) {
+      res.status(404).json({ error: 'Không tìm thấy bộ môn / đơn vị yêu cầu' });
+      return;
+    }
+
+    const existing = db.departments[index];
+    const { name, code, faculty, headName, phone, email, description, active } = req.body;
+
+    const oldName = existing.name;
+    const newName = name !== undefined && name.trim() ? name.trim() : existing.name;
+
+    // If changing name, ensure uniqueness
+    if (newName.toLowerCase() !== oldName.toLowerCase()) {
+      const duplicate = db.departments.find(
+        (d) => d.id !== id && d.name.trim().toLowerCase() === newName.toLowerCase()
+      );
+      if (duplicate) {
+        res.status(400).json({ error: `Tên bộ môn / đơn vị "${newName}" đã trùng với một đơn vị khác` });
+        return;
+      }
+    }
+
+    const updatedDept: Department = {
+      ...existing,
+      code: code !== undefined && code.trim() ? code.trim() : existing.code,
+      name: newName,
+      faculty: faculty !== undefined ? faculty.trim() : existing.faculty,
+      headName: headName !== undefined ? headName.trim() : existing.headName,
+      phone: phone !== undefined ? phone.trim() : existing.phone,
+      email: email !== undefined ? email.trim() : existing.email,
+      description: description !== undefined ? description.trim() : existing.description,
+      active: active !== undefined ? Boolean(active) : existing.active,
+    };
+
+    db.departments[index] = updatedDept;
+
+    // If department name was modified, synchronize all lecturers belonging to this department
+    if (oldName.toLowerCase() !== newName.toLowerCase()) {
+      let syncCount = 0;
+      db.lecturers.forEach((lec) => {
+        if (lec.department && lec.department.trim().toLowerCase() === oldName.toLowerCase()) {
+          lec.department = newName;
+          syncCount++;
+        }
+      });
+      // Synchronize in users
+      db.users.forEach((u) => {
+        if (u.department && u.department.trim().toLowerCase() === oldName.toLowerCase()) {
+          u.department = newName;
+        }
+      });
+      console.log(`[Department Updated] Updated department name from "${oldName}" to "${newName}" across ${syncCount} lecturers.`);
+    }
+
+    const userRole = (req.headers['x-user-role'] as string) || 'MANAGER';
+    db.logAudit(
+      (req.headers['x-user-id'] as string) || 'usr_manager',
+      userRole === 'ADMIN' ? 'Admin' : 'Quản lý Đào tạo',
+      'UPDATE',
+      'Department',
+      id,
+      `Cập nhật bộ môn / đơn vị: ${updatedDept.name} (${updatedDept.code})`
+    );
+
+    const lecturerCount = db.lecturers.filter(
+      (l) => l.department && l.department.trim().toLowerCase() === updatedDept.name.trim().toLowerCase()
+    ).length;
+
+    res.json({
+      ...updatedDept,
+      lecturerCount,
+    });
+  });
+
+  // Delete Department (Xóa Bộ Môn / Đơn Vị) - Quản lý Đào tạo hoặc Admin
+  app.delete('/api/departments/:id', (req: Request, res: Response) => {
+    if (!verifyManagerOrAdmin(req, res)) return;
+
+    const { id } = req.params;
+    const index = db.departments.findIndex((d) => d.id === id);
+    if (index === -1) {
+      res.status(404).json({ error: 'Không tìm thấy bộ môn / đơn vị yêu cầu' });
+      return;
+    }
+
+    const [deleted] = db.departments.splice(index, 1);
+
+    // If lecturers belonged to this department, reassign to "Khoa Công nghệ Thông tin" or migrateTarget
+    const migrateTo = (req.body && req.body.migrateTo) || 'Khoa Công nghệ Thông tin';
+    let reassignedCount = 0;
+    db.lecturers.forEach((lec) => {
+      if (lec.department && lec.department.trim().toLowerCase() === deleted.name.trim().toLowerCase()) {
+        lec.department = migrateTo;
+        reassignedCount++;
+      }
+    });
+
+    const userRole = (req.headers['x-user-role'] as string) || 'MANAGER';
+    db.logAudit(
+      (req.headers['x-user-id'] as string) || 'usr_manager',
+      userRole === 'ADMIN' ? 'Admin' : 'Quản lý Đào tạo',
+      'DELETE',
+      'Department',
+      id,
+      `Xóa bộ môn / đơn vị: ${deleted.name} (${reassignedCount} giảng viên chuyển sang ${migrateTo})`
+    );
+
+    res.json({
+      success: true,
+      message: `Đã xóa bộ môn / đơn vị "${deleted.name}". ${reassignedCount > 0 ? `Đã chuyển ${reassignedCount} giảng viên sang "${migrateTo}".` : ''}`,
+    });
   });
 
   // Get Student Classes

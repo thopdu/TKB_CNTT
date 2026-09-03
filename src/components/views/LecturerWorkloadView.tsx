@@ -44,10 +44,32 @@ import {
   Copy,
   LogIn,
   UserCog,
+  Settings2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
-import { WorkloadStat, WorkloadSession, Lecturer, User as UserType } from '../../types';
+import { WorkloadStat, WorkloadSession, Lecturer, Department, User as UserType } from '../../types';
+import { DepartmentManagementModal } from '../DepartmentManagementModal';
+
+// Standard PDU Departments & Academic Units
+const STANDARD_DEPARTMENTS = [
+  'Bộ môn Công nghệ Phần mềm',
+  'Bộ môn Hệ thống & Mạng',
+  'Bộ môn Khoa học Máy tính & AI',
+  'Bộ môn An toàn Thông tin',
+  'Bộ môn Hệ thống & An ninh',
+  'Bộ môn Cơ sở Dữ liệu & HTTT',
+  'Bộ môn Mạng máy tính & HTTT',
+  'Bộ môn Toán - Tin ứng dụng',
+  'Bộ môn Sư phạm Tin học',
+  'Bộ môn Khoa học Máy tính',
+  'Bộ môn Công nghệ Kỹ thuật',
+  'Bộ môn Toán - Cơ bản',
+  'Khoa Công nghệ Thông tin',
+  'Khoa Kỹ thuật Công nghệ',
+  'Phòng Đào tạo',
+  'Trung tâm Ngoại ngữ - Tin học',
+];
 
 export const LecturerWorkloadView: React.FC = () => {
   const { currentRole, currentUser, switchUser, setIsLoginModalOpen, setLoginTargetRole, selectedLecturerId, setSelectedLecturerId } = useAuth();
@@ -77,6 +99,10 @@ export const LecturerWorkloadView: React.FC = () => {
   const [accountFilter, setAccountFilter] = useState<'ALL' | 'HAS_ACCOUNT' | 'NO_ACCOUNT'>('ALL');
   const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'PERIODS_DESC' | 'NAME_ASC' | 'COURSES_DESC' | 'CLASSES_DESC'>('PERIODS_DESC');
+
+  // Department Management state
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
 
   // Modal / Drawer for detailed session schedule of a lecturer
   const [selectedLecturerDetail, setSelectedLecturerDetail] = useState<WorkloadStat | null>(null);
@@ -129,16 +155,18 @@ export const LecturerWorkloadView: React.FC = () => {
     });
   }, []);
 
-  // Fetch workload stats whenever selectedWeekId changes
+  // Fetch workload stats & departments whenever selectedWeekId changes
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const [stats, lecs] = await Promise.all([
+      const [stats, lecs, depts] = await Promise.all([
         api.getWorkloadStats(selectedWeekId),
         api.getLecturers(),
+        api.getDepartments(),
       ]);
       if (Array.isArray(stats)) setWorkloads(stats);
       if (Array.isArray(lecs)) setLecturers(lecs);
+      if (Array.isArray(depts)) setDepartments(depts);
     } catch (err) {
       console.error('Error fetching workload stats:', err);
     } finally {
@@ -204,6 +232,26 @@ export const LecturerWorkloadView: React.FC = () => {
     }
   };
 
+  // List of all unique departments from standard list, database departments, lecturers, and workloads
+  const allAvailableDepartments = useMemo(() => {
+    const deptSet = new Set<string>();
+    // From database departments
+    departments.forEach((d) => {
+      if (d.name && d.name.trim()) deptSet.add(d.name.trim());
+    });
+    // From standard fallback
+    STANDARD_DEPARTMENTS.forEach((s) => deptSet.add(s));
+    // From lecturers
+    lecturers.forEach((l) => {
+      if (l.department && l.department.trim()) deptSet.add(l.department.trim());
+    });
+    // From workloads
+    workloads.forEach((w) => {
+      if (w.department && w.department.trim()) deptSet.add(w.department.trim());
+    });
+    return Array.from(deptSet).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [departments, lecturers, workloads]);
+
   // Filtered and sorted workloads
   const filteredWorkloads = useMemo(() => {
     let list = workloads.filter((w) => {
@@ -223,7 +271,11 @@ export const LecturerWorkloadView: React.FC = () => {
         (genderFilter === 'THAY' && isThay) ||
         (genderFilter === 'CO' && isCo);
 
-      return matchSearch && matchGender;
+      const matchDept =
+        departmentFilter === 'ALL' ||
+        (w.department && w.department.toLowerCase().includes(departmentFilter.toLowerCase()));
+
+      return matchSearch && matchGender && matchDept;
     });
 
     list.sort((a, b) => {
@@ -235,7 +287,7 @@ export const LecturerWorkloadView: React.FC = () => {
     });
 
     return list;
-  }, [workloads, searchTerm, genderFilter, sortBy]);
+  }, [workloads, searchTerm, genderFilter, departmentFilter, sortBy]);
 
   // KPIs calculation for the selected week
   const weekKpis = useMemo(() => {
@@ -734,6 +786,31 @@ export const LecturerWorkloadView: React.FC = () => {
                   👩‍🏫 Cô
                 </button>
               </div>
+
+              {/* Filter by Department */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="bg-slate-50 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[200px] truncate"
+                  title="Lọc theo Bộ môn / Đơn vị"
+                >
+                  <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
+                  {allAvailableDepartments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsDeptModalOpen(true)}
+                  className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer"
+                  title="Quản lý danh sách Bộ môn / Đơn vị phụ trách"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Sort Dropdown */}
@@ -939,13 +1016,23 @@ export const LecturerWorkloadView: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={openAddModal}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Thêm Thầy/Cô Mới
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDeptModalOpen(true)}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold shrink-0 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  title="Thêm, sửa, xóa Bộ môn / Đơn vị phụ trách"
+                >
+                  <Building2 className="w-4 h-4 text-indigo-600" />
+                  Quản Lý Bộ Môn ({departments.length})
+                </button>
+                <button
+                  onClick={openAddModal}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Thêm Thầy/Cô Mới
+                </button>
+              </div>
             </div>
           )}
 
@@ -999,17 +1086,28 @@ export const LecturerWorkloadView: React.FC = () => {
                 </select>
 
                 {/* Filter by Department */}
-                <select
-                  value={departmentFilter}
-                  onChange={(e) => setDepartmentFilter(e.target.value)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[180px] truncate"
-                >
-                  <option value="ALL">Tất cả Bộ môn</option>
-                  <option value="Bộ môn Khoa học Máy tính & PM">BM Khoa học Máy tính & PM</option>
-                  <option value="Bộ môn Mạng máy tính & HTTT">BM Mạng máy tính & HTTT</option>
-                  <option value="Bộ môn Công nghệ Kỹ thuật">BM Công nghệ Kỹ thuật</option>
-                  <option value="Bộ môn Toán - Cơ bản">BM Toán - Cơ bản</option>
-                </select>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={departmentFilter}
+                    onChange={(e) => setDepartmentFilter(e.target.value)}
+                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[200px] truncate"
+                  >
+                    <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
+                    {allAvailableDepartments.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsDeptModalOpen(true)}
+                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer"
+                    title="Quản lý danh sách Bộ môn / Đơn vị"
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1250,10 +1348,10 @@ export const LecturerWorkloadView: React.FC = () => {
 
       {/* MODAL: VIEW LECTURER'S TEACHING SESSIONS IN THE SELECTED WEEK */}
       {selectedLecturerDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 animate-scaleUp">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 my-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-scaleUp overflow-hidden">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="shrink-0 p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
                   {selectedLecturerDetail.lecturerName.toLowerCase().startsWith('thầy')
@@ -1266,22 +1364,28 @@ export const LecturerWorkloadView: React.FC = () => {
                   <h3 className="font-bold text-slate-900 text-base">
                     Lịch Dạy Chi Tiết: {selectedLecturerDetail.lecturerName}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {selectedLecturerDetail.weekTitle || currentWeekObj?.title || 'Thời khóa biểu'} • Tổng cộng{' '}
-                    <strong className="text-blue-700">{selectedLecturerDetail.totalPeriods} tiết</strong>
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+                    <span>{selectedLecturerDetail.weekTitle || currentWeekObj?.title || 'Thời khóa biểu'}</span>
+                    <span>•</span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                      <Building2 className="w-3 h-3 text-indigo-600" />
+                      {selectedLecturerDetail.department || 'Bộ môn Khoa học Máy tính & PM'}
+                    </span>
+                    <span>•</span>
+                    <span>Tổng cộng <strong className="text-blue-700">{selectedLecturerDetail.totalPeriods} tiết</strong></span>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedLecturerDetail(null)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4">
+            <div className="p-5 sm:p-6 overflow-y-auto overscroll-contain flex-1 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
                   <div className="text-[11px] text-blue-700 font-bold uppercase">Học phần</div>
@@ -1356,7 +1460,37 @@ export const LecturerWorkloadView: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 flex justify-end">
+            <div className="shrink-0 p-4 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50/80">
+              <div>
+                {canManageLecturers && (
+                  <button
+                    onClick={() => {
+                      const lec = lecturers.find(
+                        (l) =>
+                          l.id === selectedLecturerDetail.lecturerId ||
+                          l.fullName.toLowerCase() === selectedLecturerDetail.lecturerName.toLowerCase() ||
+                          (l.lecturerCode && l.lecturerCode === selectedLecturerDetail.lecturerCode)
+                      );
+                      const targetLecturer: Lecturer = lec || {
+                        id: selectedLecturerDetail.lecturerId,
+                        lecturerCode: selectedLecturerDetail.lecturerCode || 'GV001',
+                        fullName: selectedLecturerDetail.lecturerName,
+                        department: selectedLecturerDetail.department || 'Bộ môn Khoa học Máy tính & PM',
+                        degree: selectedLecturerDetail.degree || 'Thạc sĩ',
+                        email: selectedLecturerDetail.email || '',
+                        phone: selectedLecturerDetail.phone || '0255.3822295',
+                        active: true,
+                      };
+                      setSelectedLecturerDetail(null);
+                      openEditModal(targetLecturer);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition border border-blue-200"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Sửa Thông Tin & Bộ Môn</span>
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setSelectedLecturerDetail(null)}
                 className="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
@@ -1370,9 +1504,9 @@ export const LecturerWorkloadView: React.FC = () => {
 
       {/* MODAL: ADD / EDIT LECTURER */}
       {(isAddModalOpen || editingLecturer) && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 my-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 animate-scaleUp overflow-hidden">
+            <div className="shrink-0 flex items-center justify-between border-b border-slate-100 p-5 sm:p-6 bg-white">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
                   <GraduationCap className="w-5 h-5" />
@@ -1391,13 +1525,14 @@ export const LecturerWorkloadView: React.FC = () => {
                   setIsAddModalOpen(false);
                   setEditingLecturer(null);
                 }}
-                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveLecturer} className="space-y-4 mt-4">
+            <form onSubmit={handleSaveLecturer} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-5 sm:p-6 overflow-y-auto overscroll-contain flex-1 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Họ và Tên Giảng Viên <span className="text-rose-500">*</span>
@@ -1446,20 +1581,97 @@ export const LecturerWorkloadView: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Bộ Môn / Đơn Vị Phụ Trách
-                </label>
-                <select
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Bộ môn Khoa học Máy tính & PM">Bộ môn Khoa học Máy tính & PM</option>
-                  <option value="Bộ môn Mạng máy tính & HTTT">Bộ môn Mạng máy tính & HTTT</option>
-                  <option value="Bộ môn Công nghệ Kỹ thuật">Bộ môn Công nghệ Kỹ thuật</option>
-                  <option value="Bộ môn Toán - Cơ bản">Bộ môn Toán - Cơ bản</option>
-                </select>
+              {/* Department / Unit Field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    Bộ Môn / Đơn Vị Phụ Trách <span className="text-rose-500">*</span>
+                  </label>
+                  {canManageLecturers && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDeptModalOpen(true)}
+                      className="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Mở danh sách quản lý Bộ môn / Đơn vị"
+                    >
+                      <Settings2 className="w-3.5 h-3.5" />
+                      Quản lý Bộ môn ({departments.length})
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    list="pdu-departments-datalist"
+                    placeholder="VD: Bộ môn Công nghệ Phần mềm, Khoa CNTT, Phòng Đào tạo..."
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    className="w-full pl-3.5 pr-28 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+
+                  {/* Quick preset selector */}
+                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFormData({ ...formData, department: e.target.value });
+                        }
+                      }}
+                      className="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      title="Chọn nhanh từ danh sách Bộ môn"
+                    >
+                      <option value="">Chọn mẫu ▾</option>
+                      {allAvailableDepartments.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <datalist id="pdu-departments-datalist">
+                    {allAvailableDepartments.map((dept) => (
+                      <option key={dept} value={dept} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {/* Popular Quick-Select Chips */}
+                <div className="space-y-1">
+                  <div className="text-[11px] font-bold text-slate-400">Gợi ý đơn vị phổ biến (Bấm để chọn nhanh):</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Bộ môn Công nghệ Phần mềm',
+                      'Bộ môn Hệ thống & Mạng',
+                      'Bộ môn Khoa học Máy tính & AI',
+                      'Bộ môn An toàn Thông tin',
+                      'Bộ môn Sư phạm Tin học',
+                      'Khoa Công nghệ Thông tin',
+                      'Khoa Kỹ thuật Công nghệ',
+                      'Phòng Đào tạo',
+                    ].map((chip) => {
+                      const isSelected = formData.department === chip;
+                      return (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, department: chip })}
+                          className={`text-[11px] px-2.5 py-1 rounded-lg border transition font-medium ${
+                            isSelected
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
+                          }`}
+                        >
+                          {chip}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1596,20 +1808,22 @@ export const LecturerWorkloadView: React.FC = () => {
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              </div>
+
+              <div className="shrink-0 flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAddModalOpen(false);
                     setEditingLecturer(null);
                   }}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   {editingLecturer ? 'Lưu Thay Đổi' : 'Thêm Giảng Viên'}
@@ -1622,10 +1836,10 @@ export const LecturerWorkloadView: React.FC = () => {
 
       {/* MODAL: MANAGE / CREATE / LINK ACCOUNT FOR LECTURER */}
       {managingAccountLecturer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-scaleUp space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 my-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-scaleUp overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="shrink-0 flex items-center justify-between border-b border-slate-100 p-5 sm:p-6 bg-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-blue-500/20">
                   <UserCog className="w-5 h-5" />
@@ -1641,11 +1855,13 @@ export const LecturerWorkloadView: React.FC = () => {
               </div>
               <button
                 onClick={() => setManagingAccountLecturer(null)}
-                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4">
 
             {/* Notification alert within modal */}
             {accountActionMsg && (
@@ -1873,14 +2089,15 @@ export const LecturerWorkloadView: React.FC = () => {
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {/* MODAL: DELETE CONFIRMATION */}
       {deletingLecturer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-scaleUp text-center space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 my-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 animate-scaleUp text-center space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -1894,13 +2111,13 @@ export const LecturerWorkloadView: React.FC = () => {
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
                 onClick={() => setDeletingLecturer(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
               >
                 Hủy Bỏ
               </button>
               <button
                 onClick={handleDeleteLecturer}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 Xác Nhận Xóa
               </button>
@@ -1908,6 +2125,23 @@ export const LecturerWorkloadView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: DEPARTMENT / ACADEMIC UNIT MANAGEMENT */}
+      <DepartmentManagementModal
+        isOpen={isDeptModalOpen}
+        onClose={() => setIsDeptModalOpen(false)}
+        departments={departments}
+        onDepartmentsChange={(newDepts) => {
+          setDepartments(newDepts);
+        }}
+        canManage={canManageLecturers}
+        onDepartmentSelected={(deptName) => {
+          setFormData((prev) => ({ ...prev, department: deptName }));
+        }}
+        onRefreshData={() => {
+          fetchStats();
+        }}
+      />
     </div>
   );
 };
