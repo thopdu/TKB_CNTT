@@ -178,8 +178,8 @@ export const ExamScheduleView: React.FC = () => {
     roomCode: 'H.101',
     building: 'Nhà H',
     examType: 'Tự luận (90 phút)',
-    lecturerName: 'ThS. Phạm Văn Thơ',
-    invigilator1: 'ThS. Phạm Văn Thơ',
+    lecturerName: 'Thầy Thơ',
+    invigilator1: 'Thầy Thơ',
     invigilator2: 'Cô Quỳnh',
     studentCount: 40,
     note: '',
@@ -441,8 +441,8 @@ export const ExamScheduleView: React.FC = () => {
       roomCode: 'H.101',
       building: 'Nhà H',
       examType: 'Tự luận (90 phút)',
-      lecturerName: lecturers.length > 0 ? lecturers[0].fullName : 'ThS. Phạm Văn Thơ',
-      invigilator1: lecturers.length > 0 ? lecturers[0].fullName : 'ThS. Phạm Văn Thơ',
+      lecturerName: lecturers.length > 0 ? lecturers[0].fullName : 'Thầy Thơ',
+      invigilator1: lecturers.length > 0 ? lecturers[0].fullName : 'Thầy Thơ',
       invigilator2: lecturers.length > 1 ? lecturers[1].fullName : 'Cô Quỳnh',
       studentCount: 40,
       note: '',
@@ -1628,7 +1628,7 @@ export const ExamScheduleView: React.FC = () => {
                         lecturerName: e.target.value,
                       })
                     }
-                    placeholder="ThS. Phạm Văn Thơ"
+                    placeholder="Thầy Thơ"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-semibold"
                   />
                 </div>

@@ -876,7 +876,7 @@ export const UserManagerView: React.FC = () => {
                   required
                   value={formValues.fullName}
                   onChange={(e) => setFormValues({ ...formValues, fullName: e.target.value })}
-                  placeholder="ví dụ: ThS. Phạm Văn Thơ"
+                  placeholder="ví dụ: Thầy Thơ"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                 />
               </div>
@@ -994,7 +994,7 @@ export const UserManagerView: React.FC = () => {
                     <option value="">-- Chọn Thầy/Cô để tự động điền & liên kết --</option>
                     {lecturers.map((lec) => (
                       <option key={lec.id} value={lec.id}>
-                        {lec.fullName} ({lec.lecturerCode}) - {lec.degree || 'Thạc sĩ'} - {lec.department}
+                        {lec.fullName} ({lec.lecturerCode}) - {lec.department}
                       </option>
                     ))}
                   </select>

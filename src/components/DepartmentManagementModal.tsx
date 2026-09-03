@@ -45,7 +45,7 @@ export const DepartmentManagementModal: React.FC<DepartmentManagementModalProps>
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [deletingDept, setDeletingDept] = useState<Department | null>(null);
-  const [migrateTarget, setMigrateTarget] = useState<string>('Khoa Công nghệ Thông tin');
+  const [migrateTarget, setMigrateTarget] = useState<string>('Khoa học máy tính');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -351,7 +351,7 @@ export const DepartmentManagementModal: React.FC<DepartmentManagementModalProps>
                     <input
                       type="text"
                       required
-                      placeholder="VD: Bộ môn Trí tuệ Nhân tạo & Khoa học Dữ liệu"
+                      placeholder="VD: Khoa học máy tính"
                       value={formData.name}
                       onChange={(e) => handleNameChange(e.target.value)}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -363,7 +363,7 @@ export const DepartmentManagementModal: React.FC<DepartmentManagementModalProps>
                     </label>
                     <input
                       type="text"
-                      placeholder="VD: BM_TTNT"
+                      placeholder="VD: BM_KHMT"
                       value={formData.code}
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -391,7 +391,7 @@ export const DepartmentManagementModal: React.FC<DepartmentManagementModalProps>
                     </label>
                     <input
                       type="text"
-                      placeholder="VD: ThS. Phạm Văn Thơ"
+                      placeholder="VD: Thầy Phạm Văn Thơ"
                       value={formData.headName}
                       onChange={(e) => setFormData({ ...formData, headName: e.target.value })}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"

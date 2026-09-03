@@ -56,7 +56,7 @@ export const TimetableView: React.FC = () => {
   const [weeks, setWeeks] = useState<any[]>([]);
   const [selectedWeekId, setSelectedWeekId] = useState<string>('week_05');
   const [selectedClassName, setSelectedClassName] = useState<string>('DCT23A');
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('ThS. Phạm Văn Thơ');
+  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('Thầy Thơ');
   const [availableLecturers, setAvailableLecturers] = useState<string[]>([]);
   const [allLecturersData, setAllLecturersData] = useState<any[]>([]);
   const [lecturersRoster, setLecturersRoster] = useState<Lecturer[]>([]);
@@ -363,7 +363,7 @@ export const TimetableView: React.FC = () => {
             }
           }
         } else if (names.length > 0 && !names.includes(selectedTeacherName)) {
-          // If default 'ThS. Phạm Văn Thơ' is not in list, find or use first
+          // If default 'Thầy Thơ' is not in list, find or use first
           const defaultLec = names.find(n => n.includes('Thơ') || n.includes('Quỳnh')) || names[0];
           if (defaultLec) setSelectedTeacherName(defaultLec);
         }
@@ -633,7 +633,7 @@ export const TimetableView: React.FC = () => {
                     onClick={() => setFilterMode('CLASS')}
                     className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
                       filterMode === 'CLASS'
-                        ? 'bg-blue-600 text-white shadow-2xs'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -712,33 +712,6 @@ export const TimetableView: React.FC = () => {
           {/* Row 2: Target Entity Selector (Lecturer with gender filters / Class pills) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
             <div className="flex items-center gap-3 flex-wrap">
-              {!isStudentRole && (
-                <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('LECTURER')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                      filterMode === 'LECTURER'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Theo Giảng viên
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('CLASS')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                      filterMode === 'CLASS'
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Theo Lớp sinh viên
-                  </button>
-                </div>
-              )}
-
               {filterMode === 'LECTURER' ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Gender Filter Pills */}

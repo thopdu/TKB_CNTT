@@ -80,11 +80,11 @@ export interface Course {
 export interface Lecturer {
   id: string;
   lecturerCode: string; // e.g. "GV001"
-  fullName: string; // e.g. "ThS. Nguyễn Văn An"
+  fullName: string; // e.g. "Thầy Thơ", "Cô Quỳnh"
   email: string;
   phone?: string;
-  department: string; // "Bộ môn Khoa học Máy tính"
-  degree: string; // "Thạc sĩ", "Tiến sĩ"
+  department: string; // "Khoa học máy tính", "Hệ thống thông tin", "Phương pháp tin", "Các thầy ngoài khoa"
+  degree?: string; // Không hiển thị học hàm học vị
   active: boolean;
   userId?: string;
   username?: string;

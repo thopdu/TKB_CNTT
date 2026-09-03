@@ -54,22 +54,10 @@ import { TimetableWeekSelector } from '../TimetableWeekSelector';
 
 // Standard PDU Departments & Academic Units
 const STANDARD_DEPARTMENTS = [
-  'Bộ môn Công nghệ Phần mềm',
-  'Bộ môn Hệ thống & Mạng',
-  'Bộ môn Khoa học Máy tính & AI',
-  'Bộ môn An toàn Thông tin',
-  'Bộ môn Hệ thống & An ninh',
-  'Bộ môn Cơ sở Dữ liệu & HTTT',
-  'Bộ môn Mạng máy tính & HTTT',
-  'Bộ môn Toán - Tin ứng dụng',
-  'Bộ môn Sư phạm Tin học',
-  'Bộ môn Khoa học Máy tính',
-  'Bộ môn Công nghệ Kỹ thuật',
-  'Bộ môn Toán - Cơ bản',
-  'Khoa Công nghệ Thông tin',
-  'Khoa Kỹ thuật Công nghệ',
-  'Phòng Đào tạo',
-  'Trung tâm Ngoại ngữ - Tin học',
+  'Khoa học máy tính',
+  'Hệ thống thông tin',
+  'Phương pháp tin',
+  'Các thầy ngoài khoa',
 ];
 
 export const LecturerWorkloadView: React.FC = () => {
@@ -132,8 +120,8 @@ export const LecturerWorkloadView: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     lecturerCode: '',
-    department: 'Bộ môn Khoa học Máy tính & PM',
-    degree: 'Thạc sĩ',
+    department: 'Khoa học máy tính',
+    degree: '',
     email: '',
     phone: '0255.3822295',
     active: true,
@@ -343,8 +331,8 @@ export const LecturerWorkloadView: React.FC = () => {
     setFormData({
       fullName: lec.fullName,
       lecturerCode: lec.lecturerCode,
-      department: lec.department || 'Bộ môn Khoa học Máy tính & PM',
-      degree: lec.degree || 'Thạc sĩ',
+      department: lec.department || 'Khoa học máy tính',
+      degree: '',
       email: lec.email || '',
       phone: lec.phone || '0255.3822295',
       active: lec.active !== undefined ? lec.active : true,
@@ -363,8 +351,8 @@ export const LecturerWorkloadView: React.FC = () => {
     setFormData({
       fullName: '',
       lecturerCode: `GV${(lecturers.length + 1).toString().padStart(3, '0')}`,
-      department: 'Bộ môn Khoa học Máy tính & PM',
-      degree: 'Thạc sĩ',
+      department: 'Khoa học máy tính',
+      degree: '',
       email: '',
       phone: '0255.3822295',
       active: true,
@@ -767,11 +755,6 @@ export const LecturerWorkloadView: React.FC = () => {
                               <div>
                                 <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                                   {w.lecturerName}
-                                  {w.degree && (
-                                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
-                                      {w.degree}
-                                    </span>
-                                  )}
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5">{w.department}</div>
                                 <div className="flex items-center gap-2 mt-1">
@@ -986,7 +969,7 @@ export const LecturerWorkloadView: React.FC = () => {
                   <tr className="bg-slate-50 text-slate-600 uppercase tracking-wider text-xs border-y border-slate-200">
                     <th className="py-3.5 px-5 font-bold">Họ và Tên Giảng Viên</th>
                     <th className="py-3.5 px-4 font-bold">Mã GV</th>
-                    <th className="py-3.5 px-4 font-bold">Học Vị / Đơn Vị</th>
+                    <th className="py-3.5 px-4 font-bold">Bộ Môn</th>
                     <th className="py-3.5 px-4 font-bold">Liên Hệ</th>
                     <th className="py-3.5 px-4 font-bold">Tài Khoản Liên Kết</th>
                     <th className="py-3.5 px-4 font-bold text-center">Trạng Thái</th>
@@ -1056,15 +1039,12 @@ export const LecturerWorkloadView: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Degree & Department */}
+                          {/* Department */}
                           <td className="py-4 px-4 text-xs">
-                            <div className="font-bold text-indigo-900 flex items-center gap-1">
-                              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                              <span>{lec.degree || 'Thạc sĩ'}</span>
-                            </div>
-                            <div className="text-slate-500 text-[11px] mt-0.5 max-w-[180px] truncate" title={lec.department}>
-                              {lec.department || 'Bộ môn CNTT'}
-                            </div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 font-semibold border border-blue-100/80">
+                              <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                              <span>{lec.department || 'Khoa học máy tính'}</span>
+                            </span>
                           </td>
 
                           {/* Contact */}
@@ -1228,7 +1208,7 @@ export const LecturerWorkloadView: React.FC = () => {
                     <span>•</span>
                     <span className="inline-flex items-center gap-1 font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                       <Building2 className="w-3 h-3 text-indigo-600" />
-                      {selectedLecturerDetail.department || 'Bộ môn Khoa học Máy tính & PM'}
+                      {selectedLecturerDetail.department || 'Khoa học máy tính'}
                     </span>
                     <span>•</span>
                     <span>Tổng cộng <strong className="text-blue-700">{selectedLecturerDetail.totalPeriods} tiết</strong></span>
@@ -1334,8 +1314,8 @@ export const LecturerWorkloadView: React.FC = () => {
                         id: selectedLecturerDetail.lecturerId,
                         lecturerCode: selectedLecturerDetail.lecturerCode || 'GV001',
                         fullName: selectedLecturerDetail.lecturerName,
-                        department: selectedLecturerDetail.department || 'Bộ môn Khoa học Máy tính & PM',
-                        degree: selectedLecturerDetail.degree || 'Thạc sĩ',
+                        department: selectedLecturerDetail.department || 'Khoa học máy tính',
+                        degree: '',
                         email: selectedLecturerDetail.email || '',
                         phone: selectedLecturerDetail.phone || '0255.3822295',
                         active: true,
@@ -1409,35 +1389,17 @@ export const LecturerWorkloadView: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Mã Giảng Viên
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lecturerCode}
-                    onChange={(e) => setFormData({ ...formData, lecturerCode: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Học Vị / Học Hàm
-                  </label>
-                  <select
-                    value={formData.degree}
-                    onChange={(e) => setFormData({ ...formData, degree: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Thạc sĩ">Thạc sĩ</option>
-                    <option value="Tiến sĩ">Tiến sĩ</option>
-                    <option value="PGS.TS">PGS.TS</option>
-                    <option value="Kỹ sư">Kỹ sư</option>
-                    <option value="Cử nhân">Cử nhân</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Mã Giảng Viên
+                </label>
+                <input
+                  type="text"
+                  value={formData.lecturerCode}
+                  onChange={(e) => setFormData({ ...formData, lecturerCode: e.target.value })}
+                  placeholder="VD: GV001"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               {/* Department / Unit Field */}
@@ -1501,17 +1463,13 @@ export const LecturerWorkloadView: React.FC = () => {
 
                 {/* Popular Quick-Select Chips */}
                 <div className="space-y-1">
-                  <div className="text-[11px] font-bold text-slate-400">Gợi ý đơn vị phổ biến (Bấm để chọn nhanh):</div>
+                  <div className="text-[11px] font-bold text-slate-400">Gợi ý đơn vị phụ trách:</div>
                   <div className="flex flex-wrap gap-1.5">
                     {[
-                      'Bộ môn Công nghệ Phần mềm',
-                      'Bộ môn Hệ thống & Mạng',
-                      'Bộ môn Khoa học Máy tính & AI',
-                      'Bộ môn An toàn Thông tin',
-                      'Bộ môn Sư phạm Tin học',
-                      'Khoa Công nghệ Thông tin',
-                      'Khoa Kỹ thuật Công nghệ',
-                      'Phòng Đào tạo',
+                      'Khoa học máy tính',
+                      'Hệ thống thông tin',
+                      'Phương pháp tin',
+                      'Các thầy ngoài khoa',
                     ].map((chip) => {
                       const isSelected = formData.department === chip;
                       return (
@@ -1708,7 +1666,7 @@ export const LecturerWorkloadView: React.FC = () => {
                     Quản Lý Tài Khoản Giảng Viên
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {managingAccountLecturer.fullName} ({managingAccountLecturer.lecturerCode}) • {managingAccountLecturer.degree || 'Thạc sĩ'}
+                    {managingAccountLecturer.fullName} ({managingAccountLecturer.lecturerCode})
                   </p>
                 </div>
               </div>

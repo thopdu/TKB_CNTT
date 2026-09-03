@@ -223,7 +223,7 @@ async function startServer() {
         foundUser = {
           id: 'usr_admin',
           username: 'pvantho',
-          fullName: 'ThS. Phạm Văn Thơ (Admin)',
+          fullName: 'Thầy Thơ (Admin)',
           email: 'pvantho@pdu.edu.vn',
           role: 'ADMIN',
           department: 'Khoa Công nghệ Thông tin - PDU',
@@ -237,8 +237,8 @@ async function startServer() {
       } else {
         foundUser.role = 'ADMIN';
         foundUser.email = 'pvantho@pdu.edu.vn';
-        if (!foundUser.fullName.includes('Phạm Văn Thơ')) {
-          foundUser.fullName = 'ThS. Phạm Văn Thơ (Admin)';
+        if (!foundUser.fullName.includes('Phạm Văn Thơ') && !foundUser.fullName.includes('Thầy Thơ')) {
+          foundUser.fullName = 'Thầy Thơ (Admin)';
         }
       }
     }
@@ -365,7 +365,7 @@ async function startServer() {
           foundUser = {
             id: 'usr_admin',
             username: 'pvantho',
-            fullName: targetName || 'ThS. Phạm Văn Thơ (Admin)',
+            fullName: targetName || 'Thầy Thơ (Admin)',
             email: 'pvantho@pdu.edu.vn',
             role: 'ADMIN',
             department: 'Khoa Công nghệ Thông tin - PDU',
@@ -836,15 +836,15 @@ async function startServer() {
         },
         parsedSample: [
           {
-            rawRow: 'Thứ 2 | Tiết 1-3 | CNTT301 | Cơ sở dữ liệu | ThS. Phạm Văn Thọ | CNTT22A | H.301',
+            rawRow: 'Thứ 2 | Tiết 1-3 | CNTT301 | Cơ sở dữ liệu | Thầy Thơ | CNTT22A | H.301',
             status: 'VALID',
           },
           {
-            rawRow: 'Thứ 2 | Tiết 4-5 | CNTT302 | Lập trình Web | ThS. Trần Thị Mai Hương | CNTT22A | H.302',
+            rawRow: 'Thứ 2 | Tiết 4-5 | CNTT302 | Lập trình Web | Cô Hương | CNTT22A | H.302',
             status: 'VALID',
           },
           {
-            rawRow: 'Thứ 3 | Tiết 1-3 | CNTT305 | Trí tuệ nhân tạo | ThS. Bùi Quang Huy | CNTT22A | H.303',
+            rawRow: 'Thứ 3 | Tiết 1-3 | CNTT305 | Trí tuệ nhân tạo | Thầy Huy | CNTT22A | H.303',
             status: 'VALID',
           },
         ],
@@ -943,8 +943,8 @@ async function startServer() {
       fullName: stdName,
       email: (email && email.trim()) || defaultEmail,
       phone: (phone && phone.trim()) || '0255.3822295',
-      department: (department && department.trim()) || 'Bộ môn Khoa học Máy tính & PM',
-      degree: (degree && degree.trim()) || 'Thạc sĩ',
+      department: (department && department.trim()) || 'Khoa học máy tính',
+      degree: '',
       active: active !== undefined ? Boolean(active) : true,
     };
 
@@ -1678,7 +1678,7 @@ async function startServer() {
     const academicYear = data.academicYear || '2025-2026';
     const semesterName = data.semesterName || 'Học kỳ 2';
     const roomCode = standardizeRoomCode(data.roomCode || 'H.101');
-    const lecturerName = formatLecturerName(data.lecturerName || data.invigilator1 || 'ThS. Phạm Văn Thơ');
+    const lecturerName = formatLecturerName(data.lecturerName || data.invigilator1 || 'Thầy Thơ');
     const invigilator1 = formatLecturerName(data.invigilator1 || lecturerName);
     const invigilator2 = data.invigilator2 ? formatLecturerName(data.invigilator2) : 'Cán bộ coi thi 2';
 
@@ -1994,6 +1994,9 @@ async function startServer() {
     if (!input || !input.trim()) return '';
     let trimmed = input.trim();
 
+    // Strip any academic degrees/ranks like ThS, TS, PGS, GS, GV, CN, KS, Thạc sĩ, Tiến sĩ, Giáo sư, Phó Giáo sư
+    trimmed = trimmed.replace(/\b(ThS|TS|PGS|GS|GV|CN|KS|Thạc sĩ|Tiến sĩ|Giáo sư|Phó Giáo sư|Ths|Ts|Pgs|Gs|Gv)\.?\s+/gi, '').trim();
+
     // If user explicitly typed Thầy or Cô, preserve it with proper capitalization
     if (/^thầy\s+/i.test(trimmed)) {
       const rest = trimmed.replace(/^thầy\s+/i, '').trim();
@@ -2003,13 +2006,8 @@ async function startServer() {
       const rest = trimmed.replace(/^cô\s+/i, '').trim();
       return `Cô ${rest}`;
     }
-    if (/^(ThS|TS|PGS|GS|GV)\.?\s+/i.test(trimmed)) {
-      const rest = trimmed.replace(/^(ThS|TS|PGS|GS|GV)\.?\s+/i, '').trim();
-      const isFemale = /(thị|nữ|quỳnh|thương|vạn|biên|kiều|trang|phương|huệ|hằng|thúy|hoa|lan|mai|hương)/i.test(rest);
-      return `${isFemale ? 'Cô' : 'Thầy'} ${rest}`;
-    }
 
-    // If no prefix, check female markers or default to Thầy
+    // Determine female markers or default to Thầy
     const isFemale = /(thị|nữ|quỳnh|thương|vạn|biên|kiều|trang|phương|huệ|hằng|thúy|hoa|lan|mai|hương)/i.test(trimmed);
     return `${isFemale ? 'Cô' : 'Thầy'} ${trimmed}`;
   }
@@ -2176,8 +2174,8 @@ async function startServer() {
           fullName: teacherName,
           email,
           phone: '0255.3822295',
-          department: 'Bộ môn Khoa học Máy tính & PM',
-          degree: 'Thạc sĩ',
+          department: 'Khoa học máy tính',
+          degree: '',
           active: true,
         };
         db.lecturers.push(newLec);
@@ -3129,7 +3127,7 @@ async function startServer() {
           const roomCodeRaw = roomCol !== -1 ? row[roomCol]?.trim() : 'H.101';
           const roomCode = standardizeRoomCode(roomCodeRaw);
           const examType = typeCol !== -1 ? row[typeCol]?.trim() : 'Tự luận (90 phút)';
-          const invigilator1Raw = invigilator1Col !== -1 ? row[invigilator1Col]?.trim() : 'ThS. Phạm Văn Thơ';
+          const invigilator1Raw = invigilator1Col !== -1 ? row[invigilator1Col]?.trim() : 'Thầy Thơ';
           const invigilator2Raw = invigilator2Col !== -1 ? row[invigilator2Col]?.trim() : 'Cán bộ coi thi 2';
           const courseCode = courseCodeCol !== -1 ? row[courseCodeCol]?.trim() : `CNTT${300 + (r % 30)}`;
           const studentCount = studentCountCol !== -1 ? parseInt(row[studentCountCol], 10) || 40 : 40;
@@ -3196,7 +3194,7 @@ async function startServer() {
             classId: 'cls_dct22a',
             classCode: 'DCT22A',
             lecturerId: 'gv_tho',
-            lecturerName: 'ThS. Phạm Văn Thơ',
+            lecturerName: 'Thầy Thơ',
             examDate: '2026-09-08',
             startTime: '07:30',
             endTime: '09:30',
@@ -3204,7 +3202,7 @@ async function startServer() {
             roomId: 'rm_h101',
             roomCode: 'H.101',
             building: 'Nhà H',
-            invigilator1: 'ThS. Phạm Văn Thơ',
+            invigilator1: 'Thầy Thơ',
             invigilator2: 'Cô Quỳnh',
             examType: 'Tự luận (90 phút)',
             studentCount: 38,
@@ -3225,7 +3223,7 @@ async function startServer() {
             classId: 'cls_dct22a',
             classCode: 'DCT22A',
             lecturerId: 'gv_quynh',
-            lecturerName: 'ThS. Nguyễn Thị Quỳnh',
+            lecturerName: 'Cô Quỳnh',
             examDate: '2026-09-10',
             startTime: '13:30',
             endTime: '15:30',
@@ -3233,7 +3231,7 @@ async function startServer() {
             roomId: 'rm_h103',
             roomCode: 'H.103',
             building: 'Nhà H',
-            invigilator1: 'ThS. Nguyễn Thị Quỳnh',
+            invigilator1: 'Cô Quỳnh',
             invigilator2: 'Thầy Toán',
             examType: 'Thực hành máy (120 phút)',
             studentCount: 38,
@@ -3546,8 +3544,8 @@ async function startServer() {
         lecturerId: matchedLec ? matchedLec.id : `gv_${removeVietnameseTones(teacherName).replace(/[^a-z0-9]/g, '_')}`,
         lecturerCode: matchedLec ? matchedLec.lecturerCode : `GV${(workloadList.length + 1).toString().padStart(3, '0')}`,
         lecturerName: stats.teacherName,
-        department: matchedLec ? matchedLec.department : 'Bộ môn Khoa học Máy tính & PM',
-        degree: matchedLec ? matchedLec.degree : 'Thạc sĩ',
+        department: matchedLec ? matchedLec.department : 'Khoa học máy tính',
+        degree: '',
         email: matchedLec ? matchedLec.email : `${removeVietnameseTones(teacherName.replace(/^(Thầy|Cô)\s+/i, '')).toLowerCase().replace(/\s+/g, '')}@pdu.edu.vn`,
         phone: matchedLec ? matchedLec.phone : '0255.3822295',
         totalPeriods: stats.totalPeriods,
@@ -3785,13 +3783,13 @@ async function startServer() {
                   studentCount: c.studentCount,
                   periods: 18,
                   subjects: new Set(['Lập trình Mạng', 'Công nghệ Phần mềm', 'Cơ sở Dữ liệu']),
-                  teachers: new Set(['ThS. Phạm Văn Thọ', 'TS. Nguyễn Văn An']),
+                  teachers: new Set(['Thầy Thơ', 'Thầy An']),
                   slots: [
                     {
                       dayOfWeek: 'Thứ 2',
                       session: 'MORNING',
                       subject: 'Lập trình Mạng',
-                      teacher: 'ThS. Phạm Văn Thọ',
+                      teacher: 'Thầy Thơ',
                       room: 'H.102',
                       period: 'Tiết 1-4',
                       time: '07:00 - 10:30',
@@ -3800,7 +3798,7 @@ async function startServer() {
                       dayOfWeek: 'Thứ 4',
                       session: 'AFTERNOON',
                       subject: 'Công nghệ Phần mềm',
-                      teacher: 'TS. Nguyễn Văn An',
+                      teacher: 'Thầy An',
                       room: 'H.201',
                       period: 'Tiết 6-9',
                       time: '13:00 - 16:30',
