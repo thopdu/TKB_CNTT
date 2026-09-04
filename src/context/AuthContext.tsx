@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem('pdu_lecturer_id') || 'gv_003';
   });
 
-  const [activeTab, setActiveTab] = useState<string>('timetable');
+  const [activeTab, setActiveTab] = useState<string>('home');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [loginTargetRole, setLoginTargetRole] = useState<UserRole | null>(null);
   const [isRoleLandingOpen, setIsRoleLandingOpen] = useState<boolean>(false);

@@ -994,7 +994,7 @@ export const UserManagerView: React.FC = () => {
                     <option value="">-- Chọn Thầy/Cô để tự động điền & liên kết --</option>
                     {lecturers.map((lec) => (
                       <option key={lec.id} value={lec.id}>
-                        {lec.fullName} ({lec.lecturerCode}) - {lec.department}
+                        {lec.fullName} - {lec.department}
                       </option>
                     ))}
                   </select>

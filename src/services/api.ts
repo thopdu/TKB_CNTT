@@ -520,11 +520,11 @@ export const api = {
   },
 
   // AI Chat
-  async askAI(message: string, history?: any[]): Promise<{ reply: string; functionExecuted?: string; data?: any }> {
+  async askAI(message: string, history?: any[], context?: any): Promise<{ reply: string; functionExecuted?: string; data?: any }> {
     return safeFetchJson(`${API_BASE}/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, context }),
     }, { reply: 'Xin lỗi, tôi chưa thể xử lý yêu cầu lúc này.' });
   },
 

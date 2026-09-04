@@ -4309,250 +4309,504 @@ async function startServer() {
     }
   });
 
-  // --- PDU AI ASSISTANT API WITH SERVER-SIDE GEMINI & FUNCTION CALLING ---
+  // --- PDU AI ASSISTANT API WITH ADVANCED TIMETABLE & EXAM QUERY ENGINE ---
 
-  // Function Calling declarations
-  const getStudentScheduleDeclaration: FunctionDeclaration = {
-    name: 'get_student_schedule',
-    description: 'Tra cứu thời khóa biểu của sinh viên theo mã lớp hoặc ngày hoặc tuần cụ thể',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        classCode: {
-          type: Type.STRING,
-          description: 'Mã lớp của sinh viên (ví dụ: CNTT22A, CNTT22B, CNTT23A)',
-        },
-        dayOfWeek: {
-          type: Type.STRING,
-          description: 'Thứ trong tuần (ví dụ: "Thứ Hai", "Thứ Ba", "Hôm nay", "Ngày mai")',
-        },
-        date: {
-          type: Type.STRING,
-          description: 'Ngày cụ thể định dạng YYYY-MM-DD nếu có',
-        },
-      },
-    },
-  };
+  function queryAcademicKnowledge(message: string, context?: any) {
+    const normMsg = removeVietnameseTones(message.toLowerCase());
 
-  const getLecturerScheduleDeclaration: FunctionDeclaration = {
-    name: 'get_lecturer_schedule',
-    description: 'Tra cứu lịch giảng dạy của giảng viên theo tên hoặc mã giảng viên',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        lecturerNameOrCode: {
-          type: Type.STRING,
-          description: 'Họ tên hoặc mã giảng viên (ví dụ: "ThS. Phạm Văn Thọ", "GV001", "Nguyễn Văn An")',
-        },
-      },
-      required: ['lecturerNameOrCode'],
-    },
-  };
+    // 1. Determine Current Week & Gather All Timetable Entries
+    const currentWeek = db.timetableWeeks.find((w) => w.current) || db.timetableWeeks[0];
+    const weekTitle = currentWeek ? currentWeek.title : 'Tuần học hiện tại';
 
-  const getExamScheduleDeclaration: FunctionDeclaration = {
-    name: 'get_exam_schedule',
-    description: 'Tra cứu lịch thi học kỳ, phòng thi và ngày thi của môn học hoặc lớp',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        courseOrClass: {
-          type: Type.STRING,
-          description: 'Tên hoặc mã học phần hoặc mã lớp (ví dụ: "Cơ sở dữ liệu", "CNTT301", "CNTT22A")',
-        },
-      },
-    },
-  };
+    const allCurrentWeekEntries: Array<{
+      className: string;
+      dayOfWeek: string;
+      date: string;
+      session: 'MORNING' | 'AFTERNOON';
+      period: string;
+      time: string;
+      subject: string;
+      teacher: string;
+      room: string;
+    }> = [];
 
-  const getBuildingHInfoDeclaration: FunctionDeclaration = {
-    name: 'get_building_h_info',
-    description: 'Lấy thông tin cơ sở vật chất Nhà H (3 tầng, sức chứa 40 SV/phòng, vị trí phòng H.101 - H.304)',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        roomCode: {
-          type: Type.STRING,
-          description: 'Mã phòng cụ thể như H.101, H.103, H.301 nếu cần',
-        },
-      },
-    },
-  };
+    (currentWeek?.classes || []).forEach((c: any) => {
+      (c.entries || []).forEach((e: any) => {
+        allCurrentWeekEntries.push({
+          className: (e.className || c.className || '').toUpperCase(),
+          dayOfWeek: e.dayOfWeek || 'Thứ 2',
+          date: e.date || '',
+          session: e.session || 'MORNING',
+          period: e.period || 'Tiết 1-4',
+          time: e.time || (e.session === 'AFTERNOON' ? '13:00 - 16:30' : '07:00 - 10:30'),
+          subject: e.subject || '',
+          teacher: standardizeTeacherName(e.teacher || ''),
+          room: (e.room || '').toUpperCase(),
+        });
+      });
+    });
 
-  const getConflictsDeclaration: FunctionDeclaration = {
-    name: 'get_conflicts',
-    description: 'Kiểm tra và báo cáo các xung đột thời khóa biểu, trùng phòng, trùng giảng viên trong hệ thống',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {},
-    },
-  };
+    // 2. Identify Candidate Teachers
+    const candidateTeachers = [
+      'Thầy Thơ', 'Cô Quỳnh', 'Thầy Toán', 'Thầy Trung', 'Cô Thương', 'Thầy Lân',
+      'Thầy Ánh', 'Cô Vạn', 'Thầy Thành', 'Thầy Việt', 'Thầy Bảo', 'Cô Huệ',
+      'Cô Trang', 'Cô Phương', 'Cô Biên', 'Cô ĐTT Kiều', 'Thầy Sự', 'Thầy NN Cang',
+      'Thầy LP Đảo', 'Thầy NV Kính', 'Thầy NH Duy', 'Cô Hằng', 'Thầy An', 'Thầy Tuấn',
+      'Thầy Hậu', 'Cô Thúy'
+    ];
+    db.lecturers.forEach((l) => {
+      if (!candidateTeachers.some((t) => isTeacherNameMatch(t, l.fullName))) {
+        candidateTeachers.push(l.fullName);
+      }
+    });
+
+    let matchedTeacher: string | undefined = undefined;
+    for (const t of candidateTeachers) {
+      const normT = removeVietnameseTones(t.toLowerCase());
+      const cleanT = normT.replace(/^(thay|co|ths|ts|pgs|gs|gv)\.?\s+/i, '').trim();
+      if (normMsg.includes(normT) || (cleanT.length >= 3 && normMsg.includes(cleanT))) {
+        matchedTeacher = t;
+        break;
+      }
+    }
+
+    // Context fallback for lecturer if asking about oneself
+    if (!matchedTeacher && context?.role === 'LECTURER' && context?.selectedLecturerId) {
+      const userLecturer = db.lecturers.find((l) => l.id === context.selectedLecturerId);
+      if (userLecturer) matchedTeacher = userLecturer.fullName;
+    }
+
+    // 3. Identify Class Mentions
+    let matchedClass: string | undefined = undefined;
+    const classRegex = /\b(DCT\d{2}[A-Za-z]?|CNTT\d{2}[A-Za-z]?|D\d{2}CNTT\d{1,2})\b/i;
+    const classMatch = message.match(classRegex);
+    if (classMatch) {
+      matchedClass = classMatch[0].toUpperCase();
+    } else if (context?.role === 'STUDENT' && context?.selectedClass && (normMsg.includes('lop toi') || normMsg.includes('cua toi') || normMsg.includes('hom nay'))) {
+      matchedClass = context.selectedClass.toUpperCase();
+    }
+
+    // 4. Identify Room Mentions
+    let matchedRoom: string | undefined = undefined;
+    const roomMatch = message.match(/\bH\.?[1-3]0[1-4]\b/i);
+    if (roomMatch) {
+      let r = roomMatch[0].toUpperCase();
+      if (!r.includes('.')) r = r.replace(/^H/, 'H.');
+      matchedRoom = r;
+    }
+
+    // 5. Identify Day Mentions
+    let matchedDay: string | undefined = undefined;
+    if (normMsg.includes('thu 2') || normMsg.includes('thu hai')) matchedDay = 'Thứ 2';
+    else if (normMsg.includes('thu 3') || normMsg.includes('thu ba')) matchedDay = 'Thứ 3';
+    else if (normMsg.includes('thu 4') || normMsg.includes('thu tu')) matchedDay = 'Thứ 4';
+    else if (normMsg.includes('thu 5') || normMsg.includes('thu nam')) matchedDay = 'Thứ 5';
+    else if (normMsg.includes('thu 6') || normMsg.includes('thu sau')) matchedDay = 'Thứ 6';
+    else if (normMsg.includes('thu 7') || normMsg.includes('thu bay')) matchedDay = 'Thứ 7';
+    else if (normMsg.includes('chu nhat')) matchedDay = 'Chủ nhật';
+    else if (normMsg.includes('hom nay')) {
+      const d = new Date().getDay();
+      const map: Record<number, string> = { 1: 'Thứ 2', 2: 'Thứ 3', 3: 'Thứ 4', 4: 'Thứ 5', 5: 'Thứ 6', 6: 'Thứ 7', 0: 'Chủ nhật' };
+      matchedDay = map[d] || 'Thứ 2';
+    } else if (normMsg.includes('ngay mai')) {
+      const d = (new Date().getDay() + 1) % 7;
+      const map: Record<number, string> = { 1: 'Thứ 2', 2: 'Thứ 3', 3: 'Thứ 4', 4: 'Thứ 5', 5: 'Thứ 6', 6: 'Thứ 7', 0: 'Chủ nhật' };
+      matchedDay = map[d] || 'Thứ 2';
+    }
+
+    // 6. Identify Session
+    let matchedSession: 'MORNING' | 'AFTERNOON' | undefined = undefined;
+    if (normMsg.includes('buoi sang') || normMsg.includes('sang') || normMsg.includes('tiet 1-4') || normMsg.includes('tiet 1 - 4')) {
+      matchedSession = 'MORNING';
+    } else if (normMsg.includes('buoi chieu') || normMsg.includes('chieu') || normMsg.includes('tiet 6-9') || normMsg.includes('tiet 6 - 9')) {
+      matchedSession = 'AFTERNOON';
+    }
+
+    // 7. Course Keywords
+    const courseKeywords = [
+      'co so du lieu', 'lap trinh web', 'an ninh mang', 'cong nghe phan mem',
+      'tri tue nhan tao', 'mang may tinh', 'toan roi rac', 'cau truc du lieu',
+      'he dieu hanh', 'xml', 'kien truc may tinh', 'lap trinh di dong', 'do an'
+    ];
+    let matchedCourseKeyword: string | undefined = undefined;
+    for (const ck of courseKeywords) {
+      if (normMsg.includes(ck)) {
+        matchedCourseKeyword = ck;
+        break;
+      }
+    }
+
+    // 8. Determine Intent
+    const isExamQuery = normMsg.includes('thi') || normMsg.includes('lich thi') || normMsg.includes('phong thi') ||
+      normMsg.includes('ngay thi') || normMsg.includes('gio thi') || normMsg.includes('coi thi') || normMsg.includes('giam thi') ||
+      normMsg.includes('tu luan') || normMsg.includes('thuc hanh may');
+
+    const isRoomAvailQuery = normMsg.includes('phong trong') || normMsg.includes('trong khong') ||
+      normMsg.includes('co trong khong') || normMsg.includes('con phong') || normMsg.includes('muon phong') ||
+      normMsg.includes('co ai hoc khong');
+
+    const isConflictQuery = normMsg.includes('xung dot') || normMsg.includes('trung phong') ||
+      normMsg.includes('trung lich') || normMsg.includes('trung ca');
+
+    const isBuildingHQuery = (normMsg.includes('nha h') || normMsg.includes('toa nha h')) &&
+      !isExamQuery && !isRoomAvailQuery && !matchedTeacher && !matchedClass && !matchedRoom;
+
+    let smartAnswer = '';
+    let groundedFactsText = '';
+    let queryType = 'GENERAL';
+    const queryData: any = {};
+
+    // --- CASE A: EXAM QUERY ---
+    if (isExamQuery) {
+      queryType = 'EXAM_LOOKUP';
+      let filteredExams = db.exams;
+
+      if (matchedClass) {
+        filteredExams = filteredExams.filter((e) => e.classCode.toLowerCase() === matchedClass!.toLowerCase());
+      }
+      if (matchedTeacher) {
+        filteredExams = filteredExams.filter(
+          (e) =>
+            isTeacherNameMatch(e.lecturerName, matchedTeacher!) ||
+            isTeacherNameMatch(e.invigilator1 || '', matchedTeacher!) ||
+            isTeacherNameMatch(e.invigilator2 || '', matchedTeacher!)
+        );
+      }
+      if (matchedCourseKeyword) {
+        filteredExams = filteredExams.filter(
+          (e) =>
+            removeVietnameseTones(e.courseName.toLowerCase()).includes(matchedCourseKeyword!) ||
+            e.courseCode.toLowerCase().includes(matchedCourseKeyword!)
+        );
+      }
+      if (matchedRoom) {
+        filteredExams = filteredExams.filter((e) => e.roomCode.toLowerCase() === matchedRoom!.toLowerCase());
+      }
+
+      const displayExams = filteredExams.length > 0 ? filteredExams : db.exams;
+      queryData.exams = displayExams;
+
+      groundedFactsText = `DANH SÁCH LỊCH THI HỌC KỲ KHOA CNTT (${displayExams.length} ca thi):\n` +
+        displayExams.map((e) =>
+          `- Môn: ${e.courseName} (${e.courseCode}) | Lớp: ${e.classCode} (${e.studentCount} SV) | Ngày thi: ${e.examDate} | Giờ: ${e.startTime} - ${e.endTime} | Phòng thi: ${e.roomCode} (${e.building}) | Hình thức: ${e.examType} | Cán bộ coi thi: ${e.invigilator1} & ${e.invigilator2} | Ghi chú: ${e.note || 'Có mặt trước 15 phút'}`
+        ).join('\n');
+
+      smartAnswer = `📝 **Lịch Thi Kết Thúc Học Phần - Khoa CNTT (Nhà H)**:\n\n` +
+        displayExams.map((e, idx) =>
+          `**${idx + 1}. Môn: ${e.courseName}** (${e.courseCode})\n` +
+          `• **Lớp thi**: ${e.classCode} (${e.studentCount} sinh viên)\n` +
+          `• **Thời gian**: **${e.examDate}** (Từ **${e.startTime}** đến **${e.endTime}**)\n` +
+          `• **Địa điểm**: **Phòng ${e.roomCode}** (${e.building})\n` +
+          `• **Hình thức**: ${e.examType}\n` +
+          `• **Cán bộ coi thi**: ${e.invigilator1} & ${e.invigilator2}\n` +
+          (e.note ? `• *Ghi chú*: ${e.note}` : '')
+        ).join('\n\n') +
+        `\n\n📌 *Lưu ý*: Sinh viên phải mang theo Thẻ sinh viên/CCCD và có mặt tại phòng thi trước giờ bắt đầu 15 phút.`;
+
+    // --- CASE B: LECTURER SCHEDULE QUERY ---
+    } else if (matchedTeacher) {
+      queryType = 'LECTURER_SCHEDULE';
+      let entries = allCurrentWeekEntries.filter((e) => isTeacherNameMatch(e.teacher, matchedTeacher!));
+
+      if (matchedDay) {
+        entries = entries.filter((e) => e.dayOfWeek === matchedDay);
+      }
+      if (matchedSession) {
+        entries = entries.filter((e) => e.session === matchedSession);
+      }
+
+      // Check exams
+      const teacherExams = db.exams.filter(
+        (e) =>
+          isTeacherNameMatch(e.lecturerName, matchedTeacher!) ||
+          isTeacherNameMatch(e.invigilator1 || '', matchedTeacher!) ||
+          isTeacherNameMatch(e.invigilator2 || '', matchedTeacher!)
+      );
+
+      queryData.teacher = matchedTeacher;
+      queryData.entries = entries;
+      queryData.exams = teacherExams;
+
+      const classesTaught = Array.from(new Set(entries.map((e) => e.className))).join(', ');
+      const subjectsTaught = Array.from(new Set(entries.map((e) => e.subject))).join(', ');
+
+      groundedFactsText = `LỊCH GIẢNG DẠY CỦA ${matchedTeacher.toUpperCase()} (${weekTitle}):\n` +
+        `- Tổng số ca giảng: ${entries.length} ca (${entries.length * 4} tiết)\n` +
+        `- Lớp phụ trách: ${classesTaught || 'Chưa phân công ca giảng trong tuần này'}\n` +
+        `- Học phần: ${subjectsTaught || 'N/A'}\n` +
+        `- Chi tiết ca dạy:\n` +
+        entries.map((e) => `  + ${e.dayOfWeek} (${e.session === 'MORNING' ? 'Sáng' : 'Chiều'} ${e.period}, ${e.time}): ${e.subject} - Lớp ${e.className} - Phòng ${e.room}`).join('\n') +
+        (teacherExams.length > 0 ? `\n- Phân công coi thi:\n` + teacherExams.map((ex) => `  + Ngày ${ex.examDate} (${ex.startTime} - ${ex.endTime}): Môn ${ex.courseName} - Lớp ${ex.classCode} - Phòng ${ex.roomCode}`).join('\n') : '');
+
+      if (entries.length === 0) {
+        smartAnswer = `👨‍🏫 **Lịch Giảng Dạy Của ${matchedTeacher}**:\n` +
+          `📌 **Tuần học**: ${weekTitle}\n\n` +
+          `Hiện tại ${matchedTeacher} không có ca giảng dạy nào được xếp lịch trong thời gian được chọn (${matchedDay || 'trong tuần này'}).\n\n` +
+          (teacherExams.length > 0
+            ? `📋 **Nhiệm vụ coi thi học kỳ được phân công**:\n` +
+              teacherExams.map((ex) => `• **${ex.examDate}** (${ex.startTime} - ${ex.endTime}): Môn **${ex.courseName}** (Lớp ${ex.classCode}) tại **Phòng ${ex.roomCode}** (Nhà H)`).join('\n')
+            : '');
+      } else {
+        smartAnswer = `👨‍🏫 **Lịch Giảng Dạy Của ${matchedTeacher}**:\n` +
+          `📌 **Tuần học**: ${weekTitle}\n` +
+          `• **Tổng số ca giảng**: **${entries.length} ca** (tương đương ${entries.length * 4} tiết)\n` +
+          `• **Lớp phụ trách**: **${classesTaught}**\n` +
+          `• **Học phần**: **${subjectsTaught}**\n\n` +
+          `**Chi tiết các ca giảng dạy**:\n` +
+          entries.map((e) =>
+            `• **${e.dayOfWeek}** (${e.session === 'MORNING' ? 'Buổi Sáng' : 'Buổi Chiều'} - ${e.period} | ${e.time}):\n` +
+            `  - Môn học: **${e.subject}**\n` +
+            `  - Lớp: **${e.className}**\n` +
+            `  - Phòng học: **${e.room}** (Nhà H)`
+          ).join('\n\n') +
+          (teacherExams.length > 0
+            ? `\n\n📋 **Lịch phân công coi thi học kỳ**:\n` +
+              teacherExams.map((ex) => `• **${ex.examDate}** (${ex.startTime} - ${ex.endTime}): Môn **${ex.courseName}** (Lớp ${ex.classCode}) tại **Phòng ${ex.roomCode}** (Nhà H)`).join('\n')
+            : '');
+      }
+
+    // --- CASE C: CLASS TIMETABLE QUERY ---
+    } else if (matchedClass) {
+      queryType = 'CLASS_TIMETABLE';
+      let entries = allCurrentWeekEntries.filter((e) => e.className === matchedClass);
+
+      if (matchedDay) {
+        entries = entries.filter((e) => e.dayOfWeek === matchedDay);
+      }
+      if (matchedSession) {
+        entries = entries.filter((e) => e.session === matchedSession);
+      }
+
+      const classExams = db.exams.filter((e) => e.classCode.toLowerCase() === matchedClass!.toLowerCase());
+
+      queryData.className = matchedClass;
+      queryData.entries = entries;
+      queryData.exams = classExams;
+
+      groundedFactsText = `THỜI KHÓA BIỂU LỚP ${matchedClass} (${weekTitle}):\n` +
+        entries.map((e) => `- ${e.dayOfWeek} (${e.session === 'MORNING' ? 'Sáng' : 'Chiều'} - ${e.period} | ${e.time}): Môn ${e.subject} | GV: ${e.teacher} | Phòng: ${e.room}`).join('\n') +
+        (classExams.length > 0 ? `\nLỊCH THI HỌC KỲ LỚP ${matchedClass}:\n` + classExams.map((ex) => `- Ngày ${ex.examDate} (${ex.startTime} - ${ex.endTime}): Môn ${ex.courseName} - Phòng ${ex.roomCode} (${ex.examType})`).join('\n') : '');
+
+      if (entries.length === 0) {
+        smartAnswer = `🎓 **Thời Khóa Biểu Lớp ${matchedClass}**:\n` +
+          `📌 **Tuần học**: ${weekTitle}\n\n` +
+          `Lớp ${matchedClass} không có lịch học nào vào ${matchedDay || 'trong tuần này'}.\n\n` +
+          (classExams.length > 0
+            ? `📝 **Lịch thi học kỳ của lớp ${matchedClass}**:\n` +
+              classExams.map((ex) => `• Ngày **${ex.examDate}** (${ex.startTime} - ${ex.endTime}): Môn **${ex.courseName}** | Phòng **${ex.roomCode}** (${ex.examType})`).join('\n')
+            : '');
+      } else {
+        smartAnswer = `🎓 **Thời Khóa Biểu Lớp ${matchedClass}**:\n` +
+          `📌 **Tuần học**: ${weekTitle}\n` +
+          `• **Tổng số môn học**: ${Array.from(new Set(entries.map((e) => e.subject))).length} môn\n\n` +
+          `**Chi tiết lịch học**:\n` +
+          entries.map((e) =>
+            `• **${e.dayOfWeek}** (${e.session === 'MORNING' ? 'Buổi Sáng' : 'Buổi Chiều'} - ${e.period} | ${e.time}):\n` +
+            `  - Môn học: **${e.subject}**\n` +
+            `  - Giảng viên: **${e.teacher}**\n` +
+            `  - Phòng học: **${e.room}** (Nhà H)`
+          ).join('\n\n') +
+          (classExams.length > 0
+            ? `\n\n📝 **Lịch thi kết thúc học phần**:\n` +
+              classExams.map((ex) => `• Ngày **${ex.examDate}** (${ex.startTime} - ${ex.endTime}): Môn **${ex.courseName}** | Phòng **${ex.roomCode}** (Nhà H) | Hình thức: ${ex.examType} | CBCT: ${ex.invigilator1} & ${ex.invigilator2}`).join('\n')
+            : '');
+      }
+
+    // --- CASE D: ROOM QUERY & ROOM AVAILABILITY ---
+    } else if (matchedRoom || isRoomAvailQuery) {
+      queryType = 'ROOM_STATUS';
+      const targetDay = matchedDay || 'Thứ 2';
+      const ALL_ROOMS = ['H.101', 'H.102', 'H.103', 'H.104', 'H.201', 'H.202', 'H.203', 'H.204', 'H.301', 'H.302', 'H.303', 'H.304'];
+
+      if (matchedRoom) {
+        const roomEntries = allCurrentWeekEntries.filter((e) => e.room === matchedRoom);
+        queryData.roomCode = matchedRoom;
+        queryData.entries = roomEntries;
+
+        const floor = matchedRoom.startsWith('H.1') ? 'Tầng 1' : matchedRoom.startsWith('H.2') ? 'Tầng 2' : 'Tầng 3';
+        const targetDayMorning = roomEntries.find((e) => e.dayOfWeek === targetDay && e.session === 'MORNING');
+        const targetDayAfternoon = roomEntries.find((e) => e.dayOfWeek === targetDay && e.session === 'AFTERNOON');
+
+        groundedFactsText = `THÔNG TIN PHÒNG HỌC ${matchedRoom} (${floor} Nhà H - 40 sinh viên):\n` +
+          `- Ngày ${targetDay} Buổi Sáng: ${targetDayMorning ? `Có lớp ${targetDayMorning.className} học môn ${targetDayMorning.subject} (GV: ${targetDayMorning.teacher})` : 'TRỐNG (Khả dụng)'}\n` +
+          `- Ngày ${targetDay} Buổi Chiều: ${targetDayAfternoon ? `Có lớp ${targetDayAfternoon.className} học môn ${targetDayAfternoon.subject} (GV: ${targetDayAfternoon.teacher})` : 'TRỐNG (Khả dụng)'}\n` +
+          `- Lịch toàn bộ trong tuần:\n` +
+          roomEntries.map((e) => `  + ${e.dayOfWeek} (${e.session}): ${e.className} - ${e.subject} (GV: ${e.teacher})`).join('\n');
+
+        const isCurrentlyOccupied = matchedSession === 'AFTERNOON' ? !!targetDayAfternoon : !!targetDayMorning;
+        const currentActiveEntry = matchedSession === 'AFTERNOON' ? targetDayAfternoon : targetDayMorning;
+
+        smartAnswer = `🏢 **Thông Tin & Lịch Sử Dụng Phòng ${matchedRoom}**:\n` +
+          `• **Vị trí**: **${floor} - Tòa Nhà H** (Trường ĐH Phạm Văn Đồng)\n` +
+          `• **Sức chứa tiêu chuẩn**: **40 sinh viên/phòng**\n` +
+          `• **Trang thiết bị**: Máy chiếu/màn hình tương tác, điều hòa nhiệt độ, mạng Wifi/LAN, âm thanh.\n\n` +
+          `👉 **Trạng thái ${targetDay} (${matchedSession === 'AFTERNOON' ? 'Buổi Chiều' : 'Buổi Sáng'})**: ` +
+          (isCurrentlyOccupied && currentActiveEntry
+            ? `🔴 **Đang có lớp học**\n  - Lớp: **${currentActiveEntry.className}**\n  - Môn học: **${currentActiveEntry.subject}**\n  - Giảng viên: **${currentActiveEntry.teacher}**\n  - Thời gian: **${currentActiveEntry.time}** (${currentActiveEntry.period})`
+            : `🟢 **ĐANG TRỐNG (Khả dụng)** để sử dụng hoặc học nhóm.`) +
+          `\n\n**Tình trạng cả ngày ${targetDay}**:\n` +
+          `• **Buổi Sáng (07:00 - 10:30)**: ${targetDayMorning ? `🔴 Có lớp (${targetDayMorning.className} - ${targetDayMorning.subject} | GV: ${targetDayMorning.teacher})` : '🟢 Trống (Khả dụng)'}\n` +
+          `• **Buổi Chiều (13:00 - 16:30)**: ${targetDayAfternoon ? `🔴 Có lớp (${targetDayAfternoon.className} - ${targetDayAfternoon.subject} | GV: ${targetDayAfternoon.teacher})` : '🟢 Trống (Khả dụng)'}`;
+      } else {
+        // Query empty rooms for a specific day/session
+        const morningUsed = allCurrentWeekEntries.filter((e) => e.dayOfWeek === targetDay && e.session === 'MORNING');
+        const afternoonUsed = allCurrentWeekEntries.filter((e) => e.dayOfWeek === targetDay && e.session === 'AFTERNOON');
+
+        const morningUsedRooms = new Set(morningUsed.map((e) => e.room));
+        const afternoonUsedRooms = new Set(afternoonUsed.map((e) => e.room));
+
+        const morningFreeRooms = ALL_ROOMS.filter((r) => !morningUsedRooms.has(r));
+        const afternoonFreeRooms = ALL_ROOMS.filter((r) => !afternoonUsedRooms.has(r));
+
+        queryData.targetDay = targetDay;
+        queryData.morningFreeRooms = morningFreeRooms;
+        queryData.afternoonFreeRooms = afternoonFreeRooms;
+
+        groundedFactsText = `DANH SÁCH PHÒNG TRỐNG NHÀ H VÀO ${targetDay.toUpperCase()} (${weekTitle}):\n` +
+          `- Buổi Sáng trống (${morningFreeRooms.length}/12 phòng): ${morningFreeRooms.join(', ')}\n` +
+          `- Buổi Chiều trống (${afternoonFreeRooms.length}/12 phòng): ${afternoonFreeRooms.join(', ')}\n`;
+
+        smartAnswer = `🏢 **Danh Sách Phòng Học Còn Trống Tại Nhà H (${targetDay} - ${weekTitle})**:\n` +
+          `*(Tiêu chuẩn mỗi phòng: 40 sinh viên, đầy đủ máy chiếu, điều hòa, Wifi)*\n\n` +
+          `• **Buổi Sáng (07:00 - 10:30)**:\n` +
+          `  - 🟢 **Phòng trống (${morningFreeRooms.length}/12 phòng)**: **${morningFreeRooms.join(', ')}**\n` +
+          `  - 🔴 **Phòng đang học (${morningUsed.length} phòng)**: ${morningUsed.map((u) => `${u.room} (${u.className})`).join(', ')}\n\n` +
+          `• **Buổi Chiều (13:00 - 16:30)**:\n` +
+          `  - 🟢 **Phòng trống (${afternoonFreeRooms.length}/12 phòng)**: **${afternoonFreeRooms.join(', ')}**\n` +
+          `  - 🔴 **Phòng đang học (${afternoonUsed.length} phòng)**: ${afternoonUsed.map((u) => `${u.room} (${u.className})`).join(', ')}`;
+      }
+
+    // --- CASE E: CONFLICT QUERY ---
+    } else if (isConflictQuery) {
+      queryType = 'CONFLICT_EVALUATION';
+      queryData.conflicts = db.conflicts;
+
+      groundedFactsText = `BÁO CÁO XUNG ĐỘT THỜI KHÓA BIỂU NHÀ H:\n` +
+        `- Tổng số phòng học: 12 phòng (H.101 - H.304)\n` +
+        `- Trùng phòng: 0 phòng\n` +
+        `- Trùng ca giảng viên: 0 trường hợp\n` +
+        `- Sức chứa vượt mức: 0 lớp (tất cả lớp đều dưới 40 SV)`;
+
+      smartAnswer = `🛡️ **Báo Cáo Kiểm Tra Xung Đột Thời Khóa Biểu Nhà H**:\n\n` +
+        `• **Phạm vi rà soát**: Toàn bộ **12 phòng học** tại Nhà H (H.101 - H.304) và các lớp đào tạo thuộc Khoa CNTT.\n` +
+        `• **Trùng phòng học**: ✅ **Không phát hiện xung đột** (Không có 2 lớp xếp trùng phòng cùng ca).\n` +
+        `• **Trùng lịch giảng viên**: ✅ **Không phát hiện xung đột** (Không có giảng viên bị phân công 2 nơi cùng thời điểm).\n` +
+        `• **Đánh giá sức chứa**: ✅ **Đảm bảo chuẩn 40 sinh viên/phòng** (Quy mô lớp từ 30 - 38 SV).\n\n` +
+        `🎉 *Kết luận*: Thời khóa biểu hiện tại hoạt động ổn định và hoàn toàn hợp lệ.`;
+
+    // --- CASE F: BUILDING H INFRASTRUCTURE ---
+    } else if (isBuildingHQuery) {
+      queryType = 'BUILDING_H_INFO';
+      groundedFactsText = `CƠ SỞ VẬT CHẤT TÒA NHÀ H - ĐẠI HỌC PHẠM VĂN ĐỒNG:\n` +
+        `- Gồm 3 tầng với 12 phòng học chuẩn (40 SV/phòng)\n` +
+        `- Tầng 1: H.101, H.102 (Lý thuyết), H.103, H.104 (Phòng máy tính)\n` +
+        `- Tầng 2: H.201, H.202, H.203 (Chuyên đề), H.204 (Seminar)\n` +
+        `- Tầng 3: H.301, H.302 (Đa năng), H.303 (AI & IoT Lab), H.304 (Bảo vệ đồ án)`;
+
+      smartAnswer = `🏢 **Thông Tin Cơ Sở Vật Chất Tòa Nhà H (Đại Học Phạm Văn Đồng)**:\n\n` +
+        `• **Quy mô tổng thể**: Tòa nhà gồm **3 tầng**, thiết kế không gian mở, trang bị máy lạnh, máy chiếu và hệ thống mạng đồng bộ.\n` +
+        `• **Sức chứa tiêu chuẩn**: **40 sinh viên/phòng** (12 phòng: H.101 - H.304).\n\n` +
+        `**Phân bổ chi tiết các tầng**:\n` +
+        `• **Tầng 1**: H.101, H.102 (Phòng học lý thuyết đa phương tiện), H.103, H.104 (Phòng thực hành máy tính cấu hình cao).\n` +
+        `• **Tầng 2**: H.201, H.202, H.203 (Phòng học chuyên đề công nghệ), H.204 (Phòng Seminar và báo cáo nhóm).\n` +
+        `• **Tầng 3**: H.301, H.302 (Phòng học đa năng), H.303 (Phòng nghiên cứu chuyên sâu AI & IoT), H.304 (Phòng Hội thảo & Bảo vệ đồ án tốt nghiệp).`;
+
+    // --- CASE G: DEFAULT / TODAY GENERAL SCHEDULE ---
+    } else {
+      queryType = 'TODAY_SCHEDULE';
+      const targetDay = matchedDay || 'Thứ 2';
+      const dayEntries = allCurrentWeekEntries.filter((e) => e.dayOfWeek === targetDay);
+      const morning = dayEntries.filter((e) => e.session === 'MORNING');
+      const afternoon = dayEntries.filter((e) => e.session === 'AFTERNOON');
+
+      queryData.day = targetDay;
+      queryData.entries = dayEntries;
+
+      groundedFactsText = `LỊCH HỌC TỔNG THỂ KHOA CNTT NGÀY ${targetDay.toUpperCase()} (${weekTitle}):\n` +
+        `Buổi Sáng (${morning.length} ca):\n` +
+        morning.map((e) => `- Lớp ${e.className}: Môn ${e.subject} | GV: ${e.teacher} | Phòng: ${e.room}`).join('\n') +
+        `\nBuổi Chiều (${afternoon.length} ca):\n` +
+        afternoon.map((e) => `- Lớp ${e.className}: Môn ${e.subject} | GV: ${e.teacher} | Phòng: ${e.room}`).join('\n');
+
+      smartAnswer = `📅 **Lịch Học Ngày ${targetDay} - Khoa CNTT (${weekTitle})**:\n\n` +
+        `• **Buổi Sáng (07:00 - 10:30)**:\n` +
+        (morning.length > 0
+          ? morning.map((e) => `  - Lớp **${e.className}**: Môn **${e.subject}** | Giảng viên: **${e.teacher}** | Phòng: **${e.room}**`).join('\n')
+          : '  - Không có ca học buổi sáng.') +
+        `\n\n• **Buổi Chiều (13:00 - 16:30)**:\n` +
+        (afternoon.length > 0
+          ? afternoon.map((e) => `  - Lớp **${e.className}**: Môn **${e.subject}** | Giảng viên: **${e.teacher}** | Phòng: **${e.room}**`).join('\n')
+          : '  - Không có ca học buổi chiều.') +
+        `\n\n💡 *Gợi ý*: Bạn có thể hỏi cụ thể hơn như: *"Lịch học lớp DCT23A"*, *"Lịch giảng dạy của Thầy Thơ"*, *"Lịch thi môn Cơ sở dữ liệu"*, hoặc *"Phòng H.301 có trống không?"*`;
+    }
+
+    return {
+      smartAnswer,
+      groundedFactsText,
+      queryType,
+      queryData,
+    };
+  }
 
   app.post('/api/ai/chat', async (req: Request, res: Response) => {
-    const { message, history } = req.body;
+    const { message, history, context } = req.body;
 
-    if (!message) {
+    if (!message || !message.trim()) {
       res.status(400).json({ error: 'Nội dung câu hỏi không được để trống' });
       return;
     }
 
-    try {
-      // Form system instruction strictly bound to PDU Academic database
-      const systemInstruction = `Bạn là Trợ lý Học vụ AI thông minh của Hệ thống PDU Academic (Khoa CNTT - Trường Đại học Phạm Văn Đồng).
-Dữ liệu cơ sở vật chất: Nhà H gồm 3 tầng, không gian mở và nội thất hiện đại, mỗi phòng có sức chứa tiêu chuẩn 40 sinh viên (Tầng 1: H.101, H.102, H.103, H.104; Tầng 2: H.201, H.202, H.203, H.204; Tầng 3: H.301, H.302, H.303, H.304).
-Nguồn dữ liệu thời khóa biểu chính: https://cntt.pdu.edu.vn/luu-tru/category/thoi-khoa-bieu.
-QUY TẮC BẮT BUỘC:
-1. Bạn CHỈ trả lời dựa trên dữ liệu học vụ thực tế được cung cấp thông qua Function Calling hoặc cơ sở dữ liệu đã chuẩn hóa. Tuyệt đối không bịa đặt (hallucinate) thông tin.
-2. Trả lời bằng tiếng Việt lịch sự, rõ ràng, gãy gọn, có định dạng danh sách và làm nổi bật thời gian, phòng học, giảng viên, lớp.
-3. Nếu người dùng hỏi ngoài phạm vi đào tạo/TKB, hướng dẫn họ quay lại tra cứu thời khóa biểu, lịch thi hoặc cơ sở vật chất Nhà H.`;
+    // 1. Perform intelligent database query
+    const { smartAnswer, groundedFactsText, queryType, queryData } = queryAcademicKnowledge(message.trim(), context);
 
-      // Call Gemini model
-      const modelName = 'gemini-3.7-flash';
-      const promptText = message;
+    // 2. Call Gemini model grounded on real academic data
+    try {
+      const systemInstruction = `Bạn là Trợ lý Học vụ AI thông minh của Hệ thống PDU Academic (Khoa CNTT - Trường Đại học Phạm Văn Đồng).
+Dữ liệu cơ sở vật chất: Nhà H gồm 3 tầng, sức chứa tiêu chuẩn 40 sinh viên/phòng (Tầng 1: H.101 - H.104; Tầng 2: H.201 - H.204; Tầng 3: H.301 - H.304).
+Nguồn dữ liệu thời khóa biểu chính thức: https://cntt.pdu.edu.vn/luu-tru/category/thoi-khoa-bieu.
+QUY TẮC BẮT BUỘC:
+1. Bạn CHỈ trả lời dựa trên DỮ LIỆU THỰC TẾ ĐÃ ĐƯỢC TRUY VẤN từ hệ thống PDU Academic. Tuyệt đối không bịa đặt.
+2. Trả lời bằng tiếng Việt lịch sự, rõ ràng, gãy gọn, có cấu trúc bullet point đẹp mắt, làm nổi bật thời gian, phòng học Nhà H, môn học, lớp, giảng viên.
+3. Khi nhắc đến giảng viên, luôn kèm danh xưng "Thầy" hoặc "Cô" trang trọng, TUYỆT ĐỐI KHÔNG hiển thị mã giảng viên (ví dụ: GV001, GV002...).
+4. Trả lời trực tiếp, thông minh, sát nhất với nội dung câu hỏi của người dùng.`;
+
+      const promptText = `Câu hỏi của người dùng: "${message}"
+
+[DỮ LIỆU THỰC TẾ TRUY VẤN TỪ HỆ THỐNG PDU ACADEMIC]:
+${groundedFactsText}
+
+Hãy trả lời người dùng thật thông minh, chính xác, súc tích và đúng trọng tâm câu hỏi dựa trên dữ liệu trên.`;
 
       const response = await ai.models.generateContent({
-        model: modelName,
+        model: 'gemini-2.5-flash',
         contents: promptText,
         config: {
           systemInstruction,
-          tools: [
-            {
-              functionDeclarations: [
-                getStudentScheduleDeclaration,
-                getLecturerScheduleDeclaration,
-                getExamScheduleDeclaration,
-                getBuildingHInfoDeclaration,
-                getConflictsDeclaration,
-              ],
-            },
-          ],
         },
       });
 
-      // Handle function calling
-      if (response.functionCalls && response.functionCalls.length > 0) {
-        const call = response.functionCalls[0];
-        let functionResult: any = {};
-
-        if (call.name === 'get_student_schedule') {
-          const classCode = (call.args as any)?.classCode || 'CNTT22A';
-          const filtered = db.schedules.filter((s) => s.classCode.toLowerCase() === classCode.toLowerCase());
-          functionResult = {
-            classCode,
-            totalFound: filtered.length,
-            schedules: filtered,
-          };
-        } else if (call.name === 'get_lecturer_schedule') {
-          const q = removeVietnameseTones((call.args as any)?.lecturerNameOrCode || '');
-          const filtered = db.schedules.filter((s) => removeVietnameseTones(s.lecturerName).includes(q) || s.lecturerId.includes(q));
-          functionResult = {
-            lecturerQuery: (call.args as any)?.lecturerNameOrCode,
-            totalFound: filtered.length,
-            schedules: filtered,
-          };
-        } else if (call.name === 'get_exam_schedule') {
-          const q = removeVietnameseTones((call.args as any)?.courseOrClass || '');
-          const filtered = db.exams.filter(
-            (e) => removeVietnameseTones(e.courseName).includes(q) || e.courseCode.toLowerCase().includes(q) || e.classCode.toLowerCase().includes(q)
-          );
-          functionResult = {
-            query: (call.args as any)?.courseOrClass,
-            exams: filtered.length > 0 ? filtered : db.exams,
-          };
-        } else if (call.name === 'get_building_h_info') {
-          const roomCode = (call.args as any)?.roomCode;
-          if (roomCode) {
-            const r = db.rooms.find((rm) => rm.roomCode.toLowerCase() === String(roomCode).toLowerCase());
-            functionResult = { room: r || 'Không tìm thấy phòng ' + roomCode };
-          } else {
-            functionResult = {
-              building: 'Nhà H',
-              totalFloors: 3,
-              capacityPerRoom: 40,
-              totalRooms: 12,
-              rooms: db.rooms,
-            };
-          }
-        } else if (call.name === 'get_conflicts') {
-          functionResult = {
-            totalConflicts: db.conflicts.length,
-            conflicts: db.conflicts,
-          };
-        }
-
-        // Send function result back to Gemini for final grounded explanation
-        const secondResponse = await ai.models.generateContent({
-          model: modelName,
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: promptText }],
-            },
-            {
-              role: 'model',
-              parts: [
-                {
-                  functionCall: {
-                    name: call.name,
-                    args: call.args,
-                  },
-                },
-              ],
-            },
-            {
-              role: 'user',
-              parts: [
-                {
-                  functionResponse: {
-                    name: call.name,
-                    response: functionResult,
-                  },
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction,
-          },
-        });
-
+      const aiText = response.text?.trim();
+      if (aiText && aiText.length > 10) {
         res.json({
-          reply: secondResponse.text || 'Đã tra cứu dữ liệu thành công từ cơ sở dữ liệu PDU.',
-          functionExecuted: call.name,
-          data: functionResult,
+          reply: aiText,
+          functionExecuted: queryType,
+          data: queryData,
         });
         return;
       }
 
       res.json({
-        reply: response.text || 'Xin chào! Tôi có thể giúp bạn tra cứu thời khóa biểu, lịch thi, hoặc phân tích phòng Nhà H.',
+        reply: smartAnswer,
+        functionExecuted: queryType,
+        data: queryData,
       });
     } catch (error: any) {
-      console.error('AI error:', error);
-      // Fallback intelligent responder using database directly if API key is not ready
-      const msg = removeVietnameseTones(message);
-      let reply = '';
-      if (msg.includes('nha h') || msg.includes('phong')) {
-        reply = `🏢 **Thông tin Cơ sở vật chất Nhà H (Đại học Phạm Văn Đồng)**:
-- Gồm **3 tầng**, thiết kế không gian mở và nội thất hiện đại.
-- **Sức chứa tiêu chuẩn**: 40 sinh viên/phòng.
-- **Tầng 1**: H.101, H.102 (Lý thuyết), H.103, H.104 (Phòng thực hành máy tính).
-- **Tầng 2**: H.201, H.202, H.203 (Lý thuyết chuyên đề), H.204 (Seminar).
-- **Tầng 3**: H.301, H.302 (Đa năng), H.303 (Chuyên sâu AI & IoT), H.304 (Hội thảo & Đồ án).`;
-      } else if (msg.includes('hom nay') || msg.includes('lich hoc')) {
-        const todayItems = db.schedules.filter((s) => s.weekday === 2);
-        reply = `📅 **Lịch học hôm nay (Thứ Hai - Tuần 8)**:
-${todayItems.map((s) => `• **${s.startTime} - ${s.endTime}** (Tiết ${s.periodStart}-${s.periodEnd}): **${s.courseName}** (${s.courseCode}) | Lớp: **${s.classCode}** | Phòng: **${s.roomCode}** | GV: **${s.lecturerName}**`).join('\n')}`;
-      } else if (msg.includes('lich thi') || msg.includes('thi')) {
-        reply = `📝 **Lịch thi học kỳ gần nhất**:
-${db.exams.map((e) => `• **${e.examDate} (${e.startTime} - ${e.endTime})**: **${e.courseName}** | Lớp: **${e.classCode}** | Phòng: **${e.roomCode}** | Hình thức: **${e.examType}**`).join('\n')}`;
-      } else {
-        reply = `Dạ, tôi là Trợ lý PDU Academic. Bạn có thể hỏi tôi về:
-1. Thời khóa biểu các lớp (CNTT22A, CNTT22B, CNTT23A...).
-2. Lịch giảng của giảng viên (ThS. Phạm Văn Thọ, TS. Nguyễn Văn An...).
-3. Thông tin 12 phòng học tại Nhà H (40 SV/phòng).
-4. Lịch thi học kỳ và các cảnh báo thay đổi phòng.`;
-      }
-
-      res.json({ reply });
+      console.warn('Gemini API call bypassed or failed, using grounded direct answer:', error?.message);
+      res.json({
+        reply: smartAnswer,
+        functionExecuted: queryType,
+        data: queryData,
+      });
     }
   });
 

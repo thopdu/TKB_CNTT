@@ -33,6 +33,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Table as TableIcon,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -224,6 +226,23 @@ export const ExamScheduleView: React.FC = () => {
   useEffect(() => {
     fetchExams();
   }, [filterYear, filterSemester, filterCohort, filterClass, filterRoom, searchKey]);
+
+  // Filtered exams by session (All / Morning / Afternoon) for cards and table views
+  const displayedExams = useMemo(() => {
+    let list = exams;
+    if (sessionFilter === 'MORNING') {
+      list = list.filter((exam) => {
+        const h = parseInt((exam.startTime || '07:30').split(':')[0], 10);
+        return h < 12;
+      });
+    } else if (sessionFilter === 'AFTERNOON') {
+      list = list.filter((exam) => {
+        const h = parseInt((exam.startTime || '13:30').split(':')[0], 10);
+        return h >= 12;
+      });
+    }
+    return list;
+  }, [exams, sessionFilter]);
 
   // Extract distinct weeks for Grid selector
   const availableWeeks = useMemo(() => {
@@ -592,290 +611,400 @@ export const ExamScheduleView: React.FC = () => {
         </div>
       )}
 
-      {/* Multi-Level Academic Filter Bar & Integrated Controls */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <CalendarCheck className="w-5 h-5 text-blue-600" />
-            <h2 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">
-              Lịch Thi Theo Khóa & Ca Thi
-            </h2>
-          </div>
+      {/* MASTER CARD: BỘ LỌC LỊCH THI THEO KHÓA & CA THI Ở CARD-HEADER, NỘI DUNG Ở CARD-BODY BÁM SÁT BIÊN CARD */}
+      <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-md overflow-hidden border-t-4 border-t-blue-600">
+        {/* CARD-HEADER: BỘ LỌC LỊCH THI THEO KHÓA VÀ CA THI */}
+        <div className="card-header bg-gradient-to-b from-blue-50/70 via-slate-50/90 to-slate-100/95 border-b-2 border-slate-300 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm ring-4 ring-blue-500/20 shrink-0">
+                <CalendarCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide">
+                    Bộ Lọc & Tra Cứu Lịch Thi
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
+                    Khoa CNTT
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium mt-0.5">
+                  Lọc nhanh theo Khóa đào tạo (D21 - D25), Ca thi Sáng/Chiều, Tuần thi và Phòng Nhà H
+                </p>
+              </div>
+            </div>
 
-          <div className="flex items-center flex-wrap gap-2 self-start lg:self-auto">
-            {/* Admin Management Tools */}
-            {currentRole === 'ADMIN' && (
-              <div className="flex items-center gap-1.5 mr-2">
+            <div className="flex items-center flex-wrap gap-2 self-start lg:self-auto">
+              {/* Admin Management Tools */}
+              {currentRole === 'ADMIN' && (
+                <div className="flex items-center gap-1.5 mr-2">
+                  <button
+                    onClick={handleAutoSync}
+                    disabled={syncing}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                    title="Đồng bộ tự động từ URL"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
+                    <span>{syncing ? 'Đang nạp...' : 'Đồng bộ URL'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleOpenImportModal}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Nạp Google Sheet</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenCreateModal()}
+                    className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm Ca Thi</span>
+                  </button>
+                </div>
+              )}
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-slate-200/80 p-1 rounded-2xl border border-slate-300/80 shadow-2xs">
                 <button
-                  onClick={handleAutoSync}
-                  disabled={syncing}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Đồng bộ tự động từ URL"
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'grid' ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-600/30' : 'text-slate-700 hover:text-slate-900 font-bold'
+                  }`}
+                  title="Xem dạng lưới từ Thứ 2 đến Thứ 6"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
-                  <span>{syncing ? 'Đang nạp...' : 'Đồng bộ URL'}</span>
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span>Lưới Thứ 2 - Thứ 6</span>
                 </button>
-
                 <button
-                  onClick={handleOpenImportModal}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'cards' ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-600/30' : 'text-slate-700 hover:text-slate-900 font-bold'
+                  }`}
+                  title="Xem dạng thẻ"
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Nạp Google Sheet</span>
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Lưới thẻ</span>
                 </button>
-
                 <button
-                  onClick={() => handleOpenCreateModal()}
-                  className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer ${
+                    viewMode === 'table' ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-600/30' : 'text-slate-700 hover:text-slate-900 font-bold'
+                  }`}
+                  title="Xem dạng bảng chi tiết"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm Ca Thi</span>
+                  <TableIcon className="w-3.5 h-3.5" />
+                  <span>Dạng bảng</span>
                 </button>
               </div>
-            )}
-
-            {/* View Mode Toggle: 2 Modes (Lưới Thứ 2 - Thứ 6 & Lưới thẻ) */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  viewMode === 'grid' ? 'bg-white text-blue-700 shadow-xs ring-1 ring-black/5' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Xem dạng lưới từ Thứ 2 đến Thứ 6"
-              >
-                <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
-                <span>Lưới Thứ 2 - Thứ 6</span>
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
-                  viewMode === 'cards' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Xem dạng thẻ"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Lưới thẻ</span>
-              </button>
             </div>
           </div>
-        </div>
 
-        {/* 6 Basic Academic Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* 1. Năm học */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Năm học</label>
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="2025-2026">2025 - 2026 (Hiện tại)</option>
-              <option value="2024-2025">2024 - 2025</option>
-              <option value="2026-2027">2026 - 2027</option>
-              <option value="ALL">Tất cả năm học</option>
-            </select>
-          </div>
-
-          {/* 2. Học kỳ */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Học kỳ</label>
-            <select
-              value={filterSemester}
-              onChange={(e) => setFilterSemester(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="Học kỳ 2">Học kỳ 2</option>
-              <option value="Học kỳ 1">Học kỳ 1</option>
-              <option value="Học kỳ Hè">Học kỳ Hè (Phụ)</option>
-              <option value="ALL">Tất cả học kỳ</option>
-            </select>
-          </div>
-
-          {/* 3. Khóa đào tạo */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-              Khóa đào tạo
-            </label>
-            <select
-              value={filterCohort}
-              onChange={(e) => setFilterCohort(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-blue-900 font-bold"
-            >
-              <option value="ALL">Tất cả các khóa</option>
-              <option value="D21">Khóa D21 (Năm 4)</option>
-              <option value="D22">Khóa D22 (Năm 3)</option>
-              <option value="D23">Khóa D23 (Năm 2)</option>
-              <option value="D24">Khóa D24 (Năm 1)</option>
-              <option value="D25">Khóa D25 (Tân sinh viên)</option>
-            </select>
-          </div>
-
-          {/* 4. Lớp */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Lớp</label>
-            <select
-              value={filterClass}
-              onChange={(e) => setFilterClass(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="ALL">Tất cả các lớp</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.classCode}>
-                  {c.classCode} ({c.className})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 5. Phòng Nhà H */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Phòng Nhà H</label>
-            <select
-              value={filterRoom}
-              onChange={(e) => setFilterRoom(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="ALL">Tất cả phòng</option>
-              <option value="H.101">H.101</option>
-              <option value="H.102">H.102</option>
-              <option value="H.103">H.103 (Phòng máy)</option>
-              <option value="H.201">H.201</option>
-              <option value="H.202">H.202</option>
-              <option value="H.203">H.203</option>
-              <option value="H.204">H.204</option>
-              <option value="H.301">H.301</option>
-              <option value="H.302">H.302</option>
-              <option value="H.303">H.303 (Phòng máy)</option>
-              <option value="H.304">H.304</option>
-            </select>
-          </div>
-
-          {/* 6. Tìm kiếm */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Tìm kiếm</label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                placeholder="Môn, GV, mã..."
-                className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          {/* Tuần thi Selector (chỉ hiển thị khi xem dạng lưới) */}
+          {viewMode === 'grid' && (
+            <div className="bg-white rounded-2xl p-3 border-2 border-slate-200/90 shadow-2xs">
+              <TimetableWeekSelector
+                weeks={examWeeksForSelector}
+                selectedWeekId={selectedWeek}
+                onSelectWeek={(id) => setSelectedWeek(id)}
+                title="Tuần thi"
+                includeAllOption={true}
+                allOptionLabel="Tất cả các tuần thi"
+                variant="embedded"
+                actions={
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none text-slate-800 font-bold text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-300 transition shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={showWeekend}
+                      onChange={(e) => setShowWeekend(e.target.checked)}
+                      className="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer"
+                    />
+                    <span>Hiện Thứ 7, CN</span>
+                  </label>
+                }
               />
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Secondary Sub-Toolbar for Grid Mode: Week Selector, Session Toggle & Weekend Checkbox */}
-        {viewMode === 'grid' && (
-          <TimetableWeekSelector
-            weeks={examWeeksForSelector}
-            selectedWeekId={selectedWeek}
-            onSelectWeek={(id) => setSelectedWeek(id)}
-            title="Chọn tuần thi TKB"
-            includeAllOption={true}
-            allOptionLabel="Tất cả các tuần thi"
-            variant="white"
-            actions={
-              <div className="flex items-center flex-wrap gap-2.5">
-                {/* Session Quick Filter */}
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+          {/* BỘ LỌC LỊCH THI THEO KHÓA VÀ CA THI */}
+          <div className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs space-y-3.5">
+            {/* Hàng 1: Bộ lọc Khóa đào tạo & Ca thi */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+              {/* BỘ LỌC THEO KHÓA ĐÀO TẠO */}
+              <div className="lg:col-span-7 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-blue-600" />
+                    <span>Khóa đào tạo</span>
+                  </label>
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                    {filterCohort === 'ALL' ? 'Tất cả các khóa' : `Đang chọn: Khóa ${filterCohort}`}
+                  </span>
+                </div>
+                {/* Cohort Quick Pills */}
+                <div className="flex items-center flex-wrap gap-1.5">
+                  {[
+                    { id: 'ALL', label: 'Tất cả các khóa' },
+                    { id: 'D21', label: 'Khóa D21 (Năm 4)' },
+                    { id: 'D22', label: 'Khóa D22 (Năm 3)' },
+                    { id: 'D23', label: 'Khóa D23 (Năm 2)' },
+                    { id: 'D24', label: 'Khóa D24 (Năm 1)' },
+                    { id: 'D25', label: 'Khóa D25 (Tân SV)' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setFilterCohort(item.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        filterCohort === item.id
+                          ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30 scale-[1.02] font-black'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300/80 font-bold hover:text-slate-900'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* BỘ LỌC THEO CA THI */}
+              <div className="lg:col-span-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                    <span>Ca thi</span>
+                  </label>
+                  <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                    {sessionFilter === 'ALL' ? 'Cả ngày' : sessionFilter === 'MORNING' ? 'Sáng (< 12h)' : 'Chiều (≥ 12h)'}
+                  </span>
+                </div>
+                {/* Shift Quick Pills */}
+                <div className="flex items-center flex-wrap gap-1.5">
                   <button
+                    type="button"
                     onClick={() => setSessionFilter('ALL')}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                      sessionFilter === 'ALL' ? 'bg-blue-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      sessionFilter === 'ALL'
+                        ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30 scale-[1.02] font-black'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300/80 font-bold hover:text-slate-900'
                     }`}
                   >
                     Tất cả ca
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSessionFilter('MORNING')}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                      sessionFilter === 'MORNING' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      sessionFilter === 'MORNING'
+                        ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-600/30 scale-[1.02] font-black'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300/80 font-bold hover:text-slate-900'
                     }`}
                   >
-                    <Sun className="w-3 h-3" />
+                    <Sun className="w-3.5 h-3.5" />
                     <span>Ca Sáng</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSessionFilter('AFTERNOON')}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                      sessionFilter === 'AFTERNOON' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      sessionFilter === 'AFTERNOON'
+                        ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-600/30 scale-[1.02] font-black'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300/80 font-bold hover:text-slate-900'
                     }`}
                   >
-                    <Sunset className="w-3 h-3" />
+                    <Sunset className="w-3.5 h-3.5" />
                     <span>Ca Chiều</span>
                   </button>
                 </div>
-
-                {/* Weekend toggle */}
-                <label className="flex items-center gap-1.5 cursor-pointer select-none text-slate-700 font-semibold text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-xl border border-slate-200 transition">
-                  <input
-                    type="checkbox"
-                    checked={showWeekend}
-                    onChange={(e) => setShowWeekend(e.target.checked)}
-                    className="w-3.5 h-3.5 text-blue-600 rounded cursor-pointer"
-                  />
-                  <span>Hiện Thứ 7, CN</span>
-                </label>
               </div>
-            }
-          />
-        )}
+            </div>
 
-        {/* Applied Filters Tags */}
-        <div className="flex items-center justify-between pt-2 text-xs text-slate-500 border-t border-slate-50">
-          <div className="flex items-center flex-wrap gap-1.5">
-            <span className="font-semibold text-slate-700">Đang lọc:</span>
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-semibold border border-blue-100">
-              {filterYear}
-            </span>
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md font-semibold border border-blue-100">
-              {filterSemester}
-            </span>
-            {filterCohort !== 'ALL' && (
-              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md font-semibold border border-indigo-100">
-                Khóa {filterCohort}
-              </span>
-            )}
-            {filterClass !== 'ALL' && (
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold">
-                Lớp {filterClass}
-              </span>
-            )}
-            {filterRoom !== 'ALL' && (
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md font-semibold border border-emerald-100">
-                Phòng {filterRoom}
-              </span>
-            )}
+            {/* Hàng 2: Các bộ lọc bổ trợ (Năm học, Học kỳ, Lớp, Phòng Nhà H, Tìm kiếm) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-3 border-t border-slate-200">
+              {/* 1. Năm học */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Năm học</label>
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs font-bold bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+                >
+                  <option value="2025-2026">2025 - 2026</option>
+                  <option value="2024-2025">2024 - 2025</option>
+                  <option value="2026-2027">2026 - 2027</option>
+                  <option value="ALL">Tất cả năm học</option>
+                </select>
+              </div>
+
+              {/* 2. Học kỳ */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Học kỳ</label>
+                <select
+                  value={filterSemester}
+                  onChange={(e) => setFilterSemester(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs font-bold bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+                >
+                  <option value="Học kỳ 2">Học kỳ 2</option>
+                  <option value="Học kỳ 1">Học kỳ 1</option>
+                  <option value="Học kỳ Hè">Học kỳ Hè (Phụ)</option>
+                  <option value="ALL">Tất cả học kỳ</option>
+                </select>
+              </div>
+
+              {/* 3. Lớp */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Lớp học phần</label>
+                <select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs font-bold bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+                >
+                  <option value="ALL">Tất cả các lớp</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.classCode}>
+                      {c.classCode} ({c.className})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 4. Phòng Nhà H */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Phòng Nhà H</label>
+                <select
+                  value={filterRoom}
+                  onChange={(e) => setFilterRoom(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs font-bold bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+                >
+                  <option value="ALL">Tất cả phòng</option>
+                  <option value="H.101">H.101</option>
+                  <option value="H.102">H.102</option>
+                  <option value="H.103">H.103 (Phòng máy)</option>
+                  <option value="H.201">H.201</option>
+                  <option value="H.202">H.202</option>
+                  <option value="H.203">H.203</option>
+                  <option value="H.204">H.204</option>
+                  <option value="H.301">H.301</option>
+                  <option value="H.302">H.302</option>
+                  <option value="H.303">H.303 (Phòng máy)</option>
+                  <option value="H.304">H.304</option>
+                </select>
+              </div>
+
+              {/* 5. Tìm kiếm */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">Tìm kiếm nhanh</label>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchKey}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder="Môn, GV, mã..."
+                    className="w-full pl-7 pr-2.5 py-1.5 text-xs font-semibold bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            Hiển thị <strong className="text-slate-900">{exams.length}</strong> ca thi phù hợp
+          {/* DÒNG TỔNG HỢP TRẠNG THÁI LỌC NỔI BẬT (ACTIVE FILTER RIBBON) - VẠCH NGĂN RÕ RÀNG VỚI NỘI DUNG DƯỚI */}
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between flex-wrap gap-2.5 border border-slate-800">
+            <div className="flex items-center flex-wrap gap-2 text-xs">
+              <span className="font-extrabold uppercase tracking-wider text-blue-300 text-[11px] flex items-center gap-1.5 bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-blue-400" />
+                ĐANG LỌC:
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                {filterYear} • {filterSemester}
+              </span>
+              <span className={`px-2.5 py-1 rounded-lg font-black border ${
+                filterCohort !== 'ALL'
+                  ? 'bg-blue-600 text-white border-blue-400 ring-2 ring-blue-400/20'
+                  : 'bg-white/10 text-slate-300 border-white/10'
+              }`}>
+                {filterCohort !== 'ALL' ? `Khóa ${filterCohort}` : 'Tất cả các khóa'}
+              </span>
+              <span className={`px-2.5 py-1 rounded-lg font-black border ${
+                sessionFilter === 'MORNING'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 font-extrabold'
+                  : sessionFilter === 'AFTERNOON'
+                  ? 'bg-indigo-400 text-slate-950 border-indigo-300 font-extrabold'
+                  : 'bg-white/10 text-slate-300 border-white/10'
+              }`}>
+                {sessionFilter === 'ALL' ? 'Tất cả ca thi' : sessionFilter === 'MORNING' ? 'Ca Sáng' : 'Ca Chiều'}
+              </span>
+              {filterClass !== 'ALL' && (
+                <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 rounded-lg font-bold border border-emerald-500/40">
+                  Lớp: {filterClass}
+                </span>
+              )}
+              {filterRoom !== 'ALL' && (
+                <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 rounded-lg font-bold border border-cyan-500/40">
+                  Phòng: {filterRoom}
+                </span>
+              )}
+              {searchKey.trim() && (
+                <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold border border-amber-500/40">
+                  Từ khóa: &ldquo;{searchKey}&rdquo;
+                </span>
+              )}
+
+              {/* Quick Reset All Filters Button */}
+              {(filterCohort !== 'ALL' || sessionFilter !== 'ALL' || filterClass !== 'ALL' || filterRoom !== 'ALL' || searchKey.trim()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterCohort('ALL');
+                    setSessionFilter('ALL');
+                    setFilterClass('ALL');
+                    setFilterRoom('ALL');
+                    setSearchKey('');
+                  }}
+                  className="px-2.5 py-1 text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-600/40 rounded-lg transition cursor-pointer flex items-center gap-1 border border-rose-400/30"
+                  title="Đặt lại toàn bộ bộ lọc về mặc định"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Xóa lọc</span>
+                </button>
+              )}
+            </div>
+
+            <div className="text-xs font-bold text-slate-300 flex items-center gap-2 ml-auto shrink-0">
+              <span className="hidden sm:inline text-slate-400">Kết quả lọc:</span>
+              <span className="bg-amber-400 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-xs shadow-xs">
+                {displayedExams.length} ca thi phù hợp
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* CARD-BODY: NỘI DUNG LỊCH THI BÁM SÁT BIÊN CARD */}
+        <div className="card-body p-0">
 
       {/* Main Content: Grid View (Thứ 2 - Thứ 6) OR Cards View OR Table View */}
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-slate-100 rounded-2xl animate-pulse" />
-          ))}
+        <div className="py-16 text-center text-slate-500">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-blue-600 mb-3" />
+          <p className="text-sm font-semibold text-slate-700">Đang tải lịch thi...</p>
         </div>
-      ) : exams.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs">
+      ) : displayedExams.length === 0 ? (
+        <div className="p-12 text-center text-slate-500">
           <GraduationCap className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800">Không tìm thấy lịch thi phù hợp</h3>
           <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            Không có ca thi nào cho năm học <strong>{filterYear}</strong>, <strong>{filterSemester}</strong> và khóa{' '}
-            <strong>{filterCohort}</strong>. Bạn có thể chọn "Tất cả các khóa" hoặc nạp thêm ca thi mới.
+            Không có ca thi nào cho năm học <strong>{filterYear}</strong>, <strong>{filterSemester}</strong>
+            {filterCohort !== 'ALL' && <>, khóa <strong>{filterCohort}</strong></>}
+            {sessionFilter !== 'ALL' && <>, ca <strong>{sessionFilter === 'MORNING' ? 'Sáng' : 'Chiều'}</strong></>}.
+            Bạn có thể đổi bộ lọc hoặc nạp thêm ca thi mới.
           </p>
           {isAdminOrManager && (
             <button
               onClick={handleOpenImportModal}
-              className="mt-4 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition inline-flex items-center gap-1.5 cursor-pointer"
+              className="mt-4 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Nạp lịch thi cho học kỳ này</span>
@@ -884,59 +1013,55 @@ export const ExamScheduleView: React.FC = () => {
         </div>
       ) : viewMode === 'grid' ? (
         /* ========================================================================= */
-        /* 1. MONDAY TO FRIDAY GRID VIEW (LƯỚI THỨ 2 ĐẾN THỨ 6)                      */
+        /* 1. MONDAY TO FRIDAY GRID VIEW - BÁM SÁT BIÊN CARD                         */
         /* ========================================================================= */
-        <div className="space-y-4 w-full min-w-0">
-          {/* Day Columns Grid Container with smooth horizontal scroll on smaller viewports */}
-          <div className="w-full overflow-x-auto pb-2">
-            <div
-              className={`grid gap-3.5 min-w-[850px] lg:min-w-0 ${
-                showWeekend
-                  ? 'grid-cols-7'
-                  : 'grid-cols-5'
-              }`}
-            >
-              {weekdayColumns.map((col) => {
-                const isToday = false; // Could be checked with current day
-
-                return (
-                  <div
-                    key={col.dayIndex}
-                    className="bg-slate-50/80 border border-slate-200/90 rounded-2xl flex flex-col min-h-[480px] shadow-xs overflow-hidden min-w-0"
-                  >
-                    {/* Column Header */}
-                    <div className="p-3 bg-white border-b border-slate-200 flex items-center justify-between min-w-0">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
-                          <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
-                            {col.name}
-                          </h3>
-                        </div>
-                        <div className="text-[10.5px] text-slate-500 font-medium mt-0.5 flex items-center gap-1 truncate">
-                          <span>{col.short}</span>
-                          {col.specificDateStr && (
-                            <>
-                              <span>•</span>
-                              <span className="font-bold text-blue-700 font-mono truncate">{col.specificDateStr}</span>
-                            </>
-                          )}
-                        </div>
+        <div className="w-full overflow-x-auto">
+          <div
+            className={`grid min-w-[850px] lg:min-w-0 divide-x divide-slate-200 ${
+              showWeekend
+                ? 'grid-cols-7'
+                : 'grid-cols-5'
+            }`}
+          >
+            {weekdayColumns.map((col) => {
+              return (
+                <div
+                  key={col.dayIndex}
+                  className="bg-slate-50/25 flex flex-col min-h-[540px] min-w-0"
+                >
+                  {/* Column Header */}
+                  <div className="p-3 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between min-w-0">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                        <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
+                          {col.name}
+                        </h3>
                       </div>
-
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                          col.totalCount > 0
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-slate-100 text-slate-400'
-                        }`}
-                      >
-                        {col.totalCount} ca
-                      </span>
+                      <div className="text-[10.5px] text-slate-500 font-medium mt-0.5 flex items-center gap-1 truncate">
+                        <span>{col.short}</span>
+                        {col.specificDateStr && (
+                          <>
+                            <span>•</span>
+                            <span className="font-bold text-blue-700 font-mono truncate">{col.specificDateStr}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Column Body: Morning & Afternoon slots */}
-                    <div className="p-2 flex-1 space-y-2.5 overflow-y-auto max-h-[750px] min-w-0">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                        col.totalCount > 0
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}
+                    >
+                      {col.totalCount} ca
+                    </span>
+                  </div>
+
+                  {/* Column Body: Morning & Afternoon slots */}
+                  <div className="p-2.5 sm:p-3 flex-1 space-y-2.5 overflow-y-auto max-h-[750px] min-w-0">
                       {col.totalCount === 0 ? (
                         /* Empty State */
                         <div className="h-44 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center p-3 text-center text-slate-400 space-y-2 my-auto">
@@ -1064,13 +1189,13 @@ export const ExamScheduleView: React.FC = () => {
               })}
             </div>
           </div>
-        </div>
       ) : viewMode === 'cards' ? (
         /* ========================================================================= */
         /* 2. CARDS VIEW                                                             */
         /* ========================================================================= */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {exams.map((exam) => {
+        <div className="p-4 sm:p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayedExams.map((exam) => {
             const countdown = getCountdown(exam.examDate);
             const dayInfo = getExamDayInfo(exam.examDate);
 
@@ -1175,15 +1300,15 @@ export const ExamScheduleView: React.FC = () => {
               </div>
             );
           })}
+          </div>
         </div>
       ) : (
         /* ========================================================================= */
-        /* 3. ACADEMIC TABLE VIEW                                                    */
+        /* 3. ACADEMIC TABLE VIEW - BÁM SÁT BIÊN CARD                                 */
         /* ========================================================================= */
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md overflow-hidden ring-1 ring-slate-100">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-3.5 text-center w-12">STT</th>
                   <th className="py-3 px-3.5">Khóa & Lớp</th>
@@ -1198,7 +1323,7 @@ export const ExamScheduleView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {exams.map((exam, index) => {
+                {displayedExams.map((exam, index) => {
                   const countdown = getCountdown(exam.examDate);
                   const dayInfo = getExamDayInfo(exam.examDate);
 
@@ -1277,8 +1402,9 @@ export const ExamScheduleView: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
         </div>
-      )}
+      </div>
 
       {/* GOOGLE SHEET EXAM IMPORT MODAL WITH DEDUPLICATION / UPSERT LOGIC */}
       {isImportModalOpen && (

@@ -52,10 +52,11 @@ export const AIAssistantDrawer: React.FC = () => {
   if (!isAIDrawerOpen) return null;
 
   const quickPrompts = [
-    'Lịch học hôm nay của tôi có môn gì?',
-    'Phòng H.301 Nhà H hiện tại có trống không?',
+    'Hôm nay lớp DCT23A học những môn gì?',
+    'Thầy Thơ tuần này giảng dạy những lớp nào?',
     'Lịch thi môn Cơ sở dữ liệu diễn ra khi nào?',
-    'Thầy Phạm Văn Thọ giảng dạy những học phần nào?',
+    'Phòng H.301 Nhà H hiện tại có trống không?',
+    'Các phòng học Nhà H còn trống buổi chiều?',
     'Kiểm tra xung đột phòng học Nhà H?',
   ];
 
@@ -75,7 +76,11 @@ export const AIAssistantDrawer: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.askAI(text);
+      const res = await api.askAI(text, undefined, {
+        role: currentRole,
+        selectedClass,
+        selectedLecturerId,
+      });
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',

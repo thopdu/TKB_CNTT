@@ -565,274 +565,367 @@ export const TimetableView: React.FC = () => {
         </div>
       )}
 
-      {/* TIMETABLE WEEK SELECTOR */}
-      <TimetableWeekSelector
-        weeks={weeks}
-        selectedWeekId={selectedWeekId}
-        onSelectWeek={(id) => setSelectedWeekId(id)}
-        title="Chọn Tuần TKB"
-        actions={
-          isAdminOrManager ? (
-            <div className="flex items-center gap-1.5 ml-1">
-              {selectedWeekObj && (
-                <button
-                  type="button"
-                  onClick={(e) => handleOpenEditWeekModal(selectedWeekObj, e)}
-                  className="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer text-xs"
-                  title="Sửa tuần đang chọn"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleOpenAddWeekModal}
-                className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition cursor-pointer text-xs"
-                title="Thêm tuần từ Google Sheet"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleAutoSync}
-                disabled={syncing}
-                className="p-1.5 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition cursor-pointer text-xs disabled:opacity-50"
-                title="Đồng bộ lại từ URL PDU"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
-              </button>
-            </div>
-          ) : undefined
-        }
-      />
-
-      {/* MAIN TIMETABLE CONTAINER WITH STREAMLINED INTEGRATED CONTROLS */}
-      <div
-        className="rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5 bg-white"
-      >
-        {/* Top Control Bar: Filter Mode, Search and Tools */}
-        <div className="flex flex-col gap-4 pb-4 border-b border-slate-100">
-          {/* Row 1: Mode Switch & View & Export tools */}
+      {/* MASTER CARD: NHÓM TOÀN BỘ BỘ LỌC VÀO CARD-HEADER, NỘI DUNG TKB THỂ HIỆN BÊN DƯỚI */}
+      <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-md overflow-hidden border-t-4 border-t-blue-600">
+        {/* CARD-HEADER: NHÓM CÁC BỘ LỌC (TUẦN HỌC, ĐỐI TƯỢNG, TÌM KIẾM, CÔNG CỤ) */}
+        <div className="card-header bg-gradient-to-b from-blue-50/70 via-slate-50/90 to-slate-100/95 border-b-2 border-slate-300 p-4 sm:p-5 space-y-4">
+          {/* Header Title with Filter icon */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              {!isStudentRole ? (
-                <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('LECTURER')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                      filterMode === 'LECTURER'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Theo Giảng viên
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterMode('CLASS')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                      filterMode === 'CLASS'
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Theo Lớp sinh viên
-                  </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm ring-4 ring-blue-500/20 shrink-0">
+                <Filter className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide">
+                    Bộ Lọc & Tra Cứu Thời Khóa Biểu
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
+                    PDU CNTT
+                  </span>
                 </div>
-              ) : (
-                <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-                  Lịch học Lớp Sinh Viên
-                </span>
-              )}
-            </div>
-
-            {/* View Mode & Actions (Search, Matrix/List, Export, Print) */}
-            <div className="flex items-center gap-2.5 flex-wrap ml-auto">
-              {/* Quick Search */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder={filterMode === 'LECTURER' ? 'Lọc môn, lớp, phòng...' : 'Lọc môn, giáo viên, phòng...'}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 hover:bg-slate-100 focus:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-48 transition"
-                />
-              </div>
-
-              {/* View Switch */}
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('matrix')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    viewMode === 'matrix' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Xem dạng lưới ma trận tuần"
-                >
-                  <TableIcon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Lưới tuần</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('cards')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    viewMode === 'cards' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Xem dạng danh sách ca học"
-                >
-                  <ListFilter className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Danh sách</span>
-                </button>
-              </div>
-
-              {/* Export & Print */}
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="p-2 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 border border-slate-200/80 rounded-xl transition cursor-pointer"
-                  title="Xuất file CSV"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="p-2 text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 border border-slate-200/80 rounded-xl transition cursor-pointer"
-                  title="In thời khóa biểu"
-                >
-                  <Printer className="w-4 h-4" />
-                </button>
+                <p className="text-xs text-slate-600 font-medium mt-0.5">
+                  Chọn tuần học và lọc theo Thầy / Cô hoặc Lớp sinh viên
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* Row 2: Target Entity Selector (Lecturer with gender filters / Class pills) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-            <div className="flex items-center gap-3 flex-wrap">
-              {filterMode === 'LECTURER' ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Gender Filter Pills */}
-                  <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setLecturerGenderFilter('ALL')}
-                      className={`px-2 py-1 rounded-md font-bold transition cursor-pointer ${
-                        lecturerGenderFilter === 'ALL'
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Tất cả ({sanitizedLecturers.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLecturerGenderFilter('THAY')}
-                      className={`px-2 py-1 rounded-md font-bold transition cursor-pointer ${
-                        lecturerGenderFilter === 'THAY'
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Thầy ({thayLecturers.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLecturerGenderFilter('CO')}
-                      className={`px-2 py-1 rounded-md font-bold transition cursor-pointer ${
-                        lecturerGenderFilter === 'CO'
-                          ? 'bg-rose-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Cô ({coLecturers.length})
-                    </button>
-                  </div>
-
-                  {/* Lecturer Search input */}
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm tên Thầy / Cô..."
-                      value={lecturerSearchTerm}
-                      onChange={(e) => setLecturerSearchTerm(e.target.value)}
-                      className="pl-8 pr-3 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-36 sm:w-44"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <span className="text-xs text-slate-500 font-medium">
-                  Chọn lớp học phần để xem thời khóa biểu:
-                </span>
-              )}
-            </div>
-
-            {/* Currently selected info tag */}
-            <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
-              <span>Đang xem:</span>
-              <span className={`font-bold px-2.5 py-0.5 rounded-lg ${
-                filterMode === 'LECTURER'
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
-              }`}>
-                {filterMode === 'LECTURER' ? selectedTeacherName : `Lớp ${selectedClassName}`}
+            {/* Quick Selected Status Pill */}
+            <div className="text-xs text-slate-600 font-medium flex items-center gap-2 shrink-0 ml-auto">
+              <span className="hidden sm:inline text-slate-500 font-bold uppercase tracking-wider text-[11px]">Đang xem:</span>
+              <span
+                className={`font-black px-3 py-1.5 rounded-xl text-xs border shadow-2xs flex items-center gap-1.5 ${
+                  filterMode === 'LECTURER'
+                    ? 'bg-emerald-600 text-white border-emerald-500 ring-2 ring-emerald-500/20'
+                    : 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-500/20'
+                }`}
+              >
+                {filterMode === 'LECTURER' ? (
+                  <>
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-100" />
+                    <span>{selectedTeacherName}</span>
+                  </>
+                ) : (
+                  <>
+                    <GraduationCap className="w-3.5 h-3.5 text-indigo-100" />
+                    <span>Lớp {selectedClassName}</span>
+                  </>
+                )}
               </span>
             </div>
           </div>
 
-          {/* Row 3: Quick Selectable Badges for Teachers or Classes */}
-          {filterMode === 'LECTURER' ? (
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
-              {filteredLecturers.map((lec: string) => {
-                const isSelected = lec.toLowerCase() === selectedTeacherName.toLowerCase();
-                const isCo = /^cô\b/i.test(lec.trim()) || /cô/i.test(lec);
-                return (
+          {/* BỘ LỌC TUẦN (WEEK SELECTOR TRONG HEADER) */}
+          <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200/90 shadow-2xs">
+            <TimetableWeekSelector
+              weeks={weeks}
+              selectedWeekId={selectedWeekId}
+              onSelectWeek={(id) => setSelectedWeekId(id)}
+              title="Tuần học"
+              variant="embedded"
+              actions={
+                isAdminOrManager ? (
+                  <div className="flex items-center gap-1.5 ml-1">
+                    {selectedWeekObj && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEditWeekModal(selectedWeekObj, e)}
+                        className="p-1.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer text-xs font-bold"
+                        title="Sửa tuần đang chọn"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleOpenAddWeekModal}
+                      className="p-1.5 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition cursor-pointer text-xs font-bold"
+                      title="Thêm tuần từ Google Sheet"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAutoSync}
+                      disabled={syncing}
+                      className="p-1.5 text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition cursor-pointer text-xs disabled:opacity-50"
+                      title="Đồng bộ lại từ URL PDU"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-blue-600' : ''}`} />
+                    </button>
+                  </div>
+                ) : undefined
+              }
+            />
+          </div>
+
+          {/* BỘ LỌC ĐỐI TƯỢNG, CHẾ ĐỘ & CÔNG CỤ */}
+          <div className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs space-y-3.5">
+            {/* Row 1: Mode Switch & View & Export tools */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {!isStudentRole ? (
+                  <div className="inline-flex p-1 bg-slate-200/80 rounded-2xl border border-slate-300 text-xs shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setFilterMode('LECTURER')}
+                      className={`px-3 py-1.5 rounded-xl font-black transition cursor-pointer flex items-center gap-1.5 ${
+                        filterMode === 'LECTURER'
+                          ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-500/30'
+                          : 'text-slate-700 hover:text-slate-900 font-bold'
+                      }`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Theo Giảng viên</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterMode('CLASS')}
+                      className={`px-3 py-1.5 rounded-xl font-black transition cursor-pointer flex items-center gap-1.5 ${
+                        filterMode === 'CLASS'
+                          ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-500/30'
+                          : 'text-slate-700 hover:text-slate-900 font-bold'
+                      }`}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      <span>Theo Lớp sinh viên</span>
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs font-black text-slate-800 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300">
+                    Lịch học Lớp Sinh Viên
+                  </span>
+                )}
+              </div>
+
+              {/* View Mode & Actions (Search, Matrix/List, Export, Print) */}
+              <div className="flex items-center gap-2 flex-wrap ml-auto">
+                {/* Quick Search */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder={filterMode === 'LECTURER' ? 'Môn, lớp, phòng...' : 'Môn, GV, phòng...'}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs bg-white text-slate-900 font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 w-36 sm:w-48 shadow-2xs transition placeholder:text-slate-400"
+                  />
+                </div>
+
+                {/* View Switch */}
+                <div className="flex items-center bg-slate-200/80 p-1 rounded-2xl border border-slate-300/80 shadow-2xs">
                   <button
-                    key={lec}
                     type="button"
-                    onClick={() => handleSelectLecturer(lec)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                      isSelected
-                        ? isCo
-                          ? 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-600/30'
-                          : 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-600/30'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
+                    onClick={() => setViewMode('matrix')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      viewMode === 'matrix' ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-600/30' : 'text-slate-700 hover:text-slate-900 font-bold'
                     }`}
+                    title="Xem dạng lưới ma trận tuần"
                   >
-                    <UserCheck className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : isCo ? 'text-rose-500' : 'text-emerald-600'}`} />
-                    <span>{lec}</span>
+                    <TableIcon className="w-3.5 h-3.5" />
+                    <span>Lưới tuần</span>
                   </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {Array.from(new Set<string>(availableClasses)).map((cls: string) => {
-                const isSelected = cls.toLowerCase() === selectedClassName.toLowerCase();
-                return (
                   <button
-                    key={cls}
                     type="button"
-                    onClick={() => handleSelectClass(cls)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-600/30'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
+                    onClick={() => setViewMode('cards')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      viewMode === 'cards' ? 'bg-blue-600 text-white shadow-xs font-extrabold ring-2 ring-blue-600/30' : 'text-slate-700 hover:text-slate-900 font-bold'
                     }`}
+                    title="Xem dạng danh sách ca học"
                   >
-                    <GraduationCap className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-slate-500'}`} />
-                    <span>Lớp {cls}</span>
+                    <ListFilter className="w-3.5 h-3.5" />
+                    <span>Danh sách</span>
                   </button>
-                );
-              })}
+                </div>
+
+                {/* Export & Print */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleExportCSV}
+                    className="p-2 text-slate-700 hover:text-blue-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition cursor-pointer shadow-2xs"
+                    title="Xuất file CSV"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="p-2 text-slate-700 hover:text-blue-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition cursor-pointer shadow-2xs"
+                    title="In thời khóa biểu"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Row 2: Target Entity Selector (Lecturer with gender filters / Class pills) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center gap-3 flex-wrap">
+                {filterMode === 'LECTURER' ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                      Phân loại GV:
+                    </span>
+                    {/* Gender Filter Pills */}
+                    <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-300 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setLecturerGenderFilter('ALL')}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                          lecturerGenderFilter === 'ALL'
+                            ? 'bg-slate-900 text-white shadow-2xs font-extrabold'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        Tất cả ({sanitizedLecturers.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerGenderFilter('THAY')}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                          lecturerGenderFilter === 'THAY'
+                            ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        Thầy ({thayLecturers.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLecturerGenderFilter('CO')}
+                        className={`px-2.5 py-1 rounded-lg font-bold transition cursor-pointer ${
+                          lecturerGenderFilter === 'CO'
+                            ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        Cô ({coLecturers.length})
+                      </button>
+                    </div>
+
+                    {/* Lecturer Search input */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Tìm tên Thầy / Cô..."
+                        value={lecturerSearchTerm}
+                        onChange={(e) => setLecturerSearchTerm(e.target.value)}
+                        className="pl-8 pr-3 py-1 text-xs bg-white text-slate-900 font-semibold border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 w-36 sm:w-48 shadow-2xs placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4 text-indigo-600" />
+                    <span>Chọn lớp học phần để xem thời khóa biểu:</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Currently selected info tag */}
+              <div className="text-xs text-slate-700 font-semibold flex items-center gap-1.5">
+                <span className="text-slate-500">Đang chọn:</span>
+                <span className={`font-black px-2.5 py-0.5 rounded-lg border ${
+                  filterMode === 'LECTURER'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-indigo-50 text-indigo-800 border-indigo-300'
+                }`}>
+                  {filterMode === 'LECTURER' ? selectedTeacherName : `Lớp ${selectedClassName}`}
+                </span>
+              </div>
+            </div>
+
+            {/* Row 3: Quick Selectable Badges for Teachers or Classes */}
+            {filterMode === 'LECTURER' ? (
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1 p-1 bg-slate-50/70 rounded-xl border border-slate-200">
+                {filteredLecturers.map((lec: string) => {
+                  const isSelected = lec.toLowerCase() === selectedTeacherName.toLowerCase();
+                  const isCo = /^cô\b/i.test(lec.trim()) || /cô/i.test(lec);
+                  return (
+                    <button
+                      key={lec}
+                      type="button"
+                      onClick={() => handleSelectLecturer(lec)}
+                      className={`px-3 py-1.5 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? isCo
+                            ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/30 scale-[1.02] font-black'
+                            : 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/30 scale-[1.02] font-black'
+                          : 'bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold hover:text-slate-900 shadow-2xs'
+                      }`}
+                    >
+                      <UserCheck className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : isCo ? 'text-rose-500' : 'text-emerald-600'}`} />
+                      <span>{lec}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 p-1 bg-slate-50/70 rounded-xl border border-slate-200">
+                {Array.from(new Set<string>(availableClasses)).map((cls: string) => {
+                  const isSelected = cls.toLowerCase() === selectedClassName.toLowerCase();
+                  return (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => handleSelectClass(cls)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/30 scale-[1.02] font-black'
+                          : 'bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold hover:text-slate-900 shadow-2xs'
+                      }`}
+                    >
+                      <GraduationCap className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-200' : 'text-slate-500'}`} />
+                      <span>Lớp {cls}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* DÒNG TỔNG HỢP TRẠNG THÁI LỌC NỔI BẬT (ACTIVE FILTER RIBBON) - VẠCH NGĂN RÕ RÀNG VỚI NỘI DUNG DƯỚI */}
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between flex-wrap gap-2.5 border border-slate-800">
+            <div className="flex items-center flex-wrap gap-2 text-xs">
+              <span className="font-extrabold uppercase tracking-wider text-blue-300 text-[11px] flex items-center gap-1.5 bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-blue-400" />
+                ĐANG LỌC:
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                {weekDetails?.title || selectedWeekId}
+              </span>
+              <span className={`px-2.5 py-1 rounded-lg font-black border ${
+                filterMode === 'LECTURER'
+                  ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/20'
+                  : 'bg-indigo-600 text-white border-indigo-400 ring-2 ring-indigo-400/20'
+              }`}>
+                {filterMode === 'LECTURER' ? `GV: ${selectedTeacherName}` : `Lớp: ${selectedClassName}`}
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-slate-300 rounded-lg font-bold border border-white/15">
+                {viewMode === 'matrix' ? 'Lưới ma trận tuần' : 'Danh sách ca học'}
+              </span>
+              {searchTerm.trim() && (
+                <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold border border-amber-500/40">
+                  Từ khóa: &ldquo;{searchTerm}&rdquo;
+                </span>
+              )}
+            </div>
+
+            <div className="text-xs font-bold text-slate-300 flex items-center gap-2 ml-auto shrink-0">
+              <span className="hidden sm:inline text-slate-400">Trạng thái:</span>
+              <span className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-xs shadow-xs">
+                Sẵn sàng theo dõi
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* THỐNG KÊ THEO TUẦN (WEEKLY STATISTICS FOR LECTURER) */}
+        {/* CARD-BODY: NỘI DUNG THỜI KHÓA BIỂU THỂ HIỆN BÊN DƯỚI */}
+        <div className="card-body p-4 sm:p-6 space-y-6">
+          {/* THỐNG KÊ THEO TUẦN (WEEKLY STATISTICS FOR LECTURER) */}
         {filterMode === 'LECTURER' && weeklyStats && (
           <div className="bg-gradient-to-br from-slate-50 to-emerald-50/40 rounded-2xl p-4 sm:p-5 border border-emerald-200/80 shadow-2xs space-y-4">
             <div className="flex items-center justify-between gap-2 border-b border-emerald-100 pb-3">
@@ -1212,6 +1305,7 @@ export const TimetableView: React.FC = () => {
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
+        </div>
         </div>
       </div>
 

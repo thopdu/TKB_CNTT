@@ -51,7 +51,7 @@ export interface TimetableWeekSelectorProps {
   actions?: React.ReactNode;
   badge?: React.ReactNode;
   className?: string;
-  variant?: 'white' | 'gray';
+  variant?: 'white' | 'gray' | 'embedded';
   showCurrentIndicator?: boolean;
 }
 
@@ -187,12 +187,15 @@ export const TimetableWeekSelector: React.FC<TimetableWeekSelectorProps> = ({
     }
   }, [selectedWeekId]);
 
-  const bgStyle = variant === 'gray' ? 'bg-[#f2f2f2]' : 'bg-white';
+  const containerClass =
+    variant === 'embedded'
+      ? `space-y-3 bg-transparent ${className}`
+      : `rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3.5 ${
+          variant === 'gray' ? 'bg-[#f2f2f2]' : 'bg-white'
+        } ${className}`;
 
   return (
-    <div
-      className={`rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3.5 ${bgStyle} ${className}`}
-    >
+    <div className={containerClass}>
       {/* Header bar: Title, Navigation steps, Search & Extra Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Left: Title, Badges & Step Controls */}
@@ -296,10 +299,10 @@ export const TimetableWeekSelector: React.FC<TimetableWeekSelectorProps> = ({
                   type="button"
                   onClick={() => onSelectWeek(w.weekId)}
                   title={w.tooltip}
-                  className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 flex items-center gap-1.5 select-none ${
+                  className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs transition whitespace-nowrap shrink-0 flex items-center gap-1.5 select-none ${
                     isSelected
-                      ? 'bg-[#085584] text-white shadow-xs scale-[1.02] ring-2 ring-blue-600/20'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/60'
+                      ? 'bg-blue-600 text-white shadow-sm scale-[1.02] ring-2 ring-blue-500/30 font-extrabold'
+                      : 'bg-slate-100 hover:bg-slate-200/90 text-slate-800 border border-slate-300/70 font-bold hover:text-slate-900'
                   }`}
                 >
                   <span>{w.displayName}</span>

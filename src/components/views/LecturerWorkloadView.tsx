@@ -45,6 +45,7 @@ import {
   LogIn,
   UserCog,
   Settings2,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -236,6 +237,61 @@ export const LecturerWorkloadView: React.FC = () => {
 
     return list;
   }, [workloads, searchTerm, genderFilter, departmentFilter, sortBy]);
+
+  // Active filter state helpers
+  const hasActiveWorkloadFilters =
+    searchTerm.trim() !== '' ||
+    genderFilter !== 'ALL' ||
+    departmentFilter !== 'ALL' ||
+    sortBy !== 'PERIODS_DESC';
+
+  const handleResetWorkloadFilters = () => {
+    setSearchTerm('');
+    setGenderFilter('ALL');
+    setDepartmentFilter('ALL');
+    setSortBy('PERIODS_DESC');
+  };
+
+  const hasActiveLecturerFilters =
+    searchTerm.trim() !== '' ||
+    genderFilter !== 'ALL' ||
+    accountFilter !== 'ALL' ||
+    departmentFilter !== 'ALL';
+
+  const handleResetLecturerFilters = () => {
+    setSearchTerm('');
+    setGenderFilter('ALL');
+    setAccountFilter('ALL');
+    setDepartmentFilter('ALL');
+  };
+
+  // Filtered lecturers for Tab 2
+  const filteredLecturers = useMemo(() => {
+    return lecturers.filter((l) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchSearch =
+        !term ||
+        l.fullName.toLowerCase().includes(term) ||
+        (l.department && l.department.toLowerCase().includes(term)) ||
+        (l.email && l.email.toLowerCase().includes(term)) ||
+        (l.username && l.username.toLowerCase().includes(term));
+
+      const matchGender =
+        genderFilter === 'ALL' ||
+        (genderFilter === 'THAY' && l.fullName.toLowerCase().startsWith('thầy')) ||
+        (genderFilter === 'CO' && l.fullName.toLowerCase().startsWith('cô'));
+
+      const matchAccount =
+        accountFilter === 'ALL' ||
+        (accountFilter === 'HAS_ACCOUNT' && l.hasAccount) ||
+        (accountFilter === 'NO_ACCOUNT' && !l.hasAccount);
+
+      const matchDept =
+        departmentFilter === 'ALL' || (l.department && l.department.includes(departmentFilter));
+
+      return matchSearch && matchGender && matchAccount && matchDept;
+    });
+  }, [lecturers, searchTerm, genderFilter, accountFilter, departmentFilter]);
 
   // KPIs calculation for the selected week
   const weekKpis = useMemo(() => {
@@ -587,121 +643,184 @@ export const LecturerWorkloadView: React.FC = () => {
             allOptionLabel="Cả học kỳ 2"
             variant="gray"
           />
-          {/* Filter Bar */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Search Box */}
-              <div className="relative min-w-[240px] max-w-sm">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Tìm theo tên Thầy/Cô, môn, lớp..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+          {/* Master Card: Bộ Lọc & Bảng Khối Lượng Giảng Dạy */}
+          <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-md overflow-hidden border-t-4 border-t-blue-600">
+            {/* CARD-HEADER: BỘ LỌC NỔI BẬT */}
+            <div className="card-header bg-gradient-to-b from-blue-50/70 via-slate-50/90 to-slate-100/95 border-b-2 border-slate-300 p-4 sm:p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm ring-4 ring-blue-500/20 shrink-0">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide">
+                        Bảng Chi Tiết Khối Lượng Giảng Dạy
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
+                        {currentWeekObj?.title || 'Tất cả các tuần'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium mt-0.5">
+                      Danh sách phân công giảng dạy, học phần, lớp học và các buổi giảng dạy chi tiết trong tuần
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs font-bold text-slate-700 bg-white/90 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                  Hiển thị: <strong className="text-blue-700 font-black">{filteredWorkloads.length}</strong> / {workloads.length} Thầy/Cô
+                </div>
               </div>
 
-              {/* Title / Prefix Filter */}
-              <div className="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
-                <button
-                  onClick={() => setGenderFilter('ALL')}
-                  className={`px-3 py-1 rounded-lg transition ${
-                    genderFilter === 'ALL'
-                      ? 'bg-white text-blue-700 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Tất cả ({workloads.length})
-                </button>
-                <button
-                  onClick={() => setGenderFilter('THAY')}
-                  className={`px-3 py-1 rounded-lg transition ${
-                    genderFilter === 'THAY'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  👨‍🏫 Thầy
-                </button>
-                <button
-                  onClick={() => setGenderFilter('CO')}
-                  className={`px-3 py-1 rounded-lg transition ${
-                    genderFilter === 'CO'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  👩‍🏫 Cô
-                </button>
+              {/* Filters Control Box */}
+              <div className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs space-y-3">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3 flex-1">
+                    {/* Search Box */}
+                    <div className="relative min-w-[240px] max-w-sm flex-1 sm:flex-initial">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Tìm theo tên Thầy/Cô, môn, lớp..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-7 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-2xs"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Title / Prefix Filter */}
+                    <div className="inline-flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-black">
+                      <button
+                        onClick={() => setGenderFilter('ALL')}
+                        className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                          genderFilter === 'ALL'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        Tất cả ({workloads.length})
+                      </button>
+                      <button
+                        onClick={() => setGenderFilter('THAY')}
+                        className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                          genderFilter === 'THAY'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        👨‍🏫 Thầy
+                      </button>
+                      <button
+                        onClick={() => setGenderFilter('CO')}
+                        className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                          genderFilter === 'CO'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        👩‍🏫 Cô
+                      </button>
+                    </div>
+
+                    {/* Filter by Department */}
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={departmentFilter}
+                        onChange={(e) => setDepartmentFilter(e.target.value)}
+                        className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 max-w-[220px] truncate shadow-2xs"
+                        title="Lọc theo Bộ môn / Đơn vị"
+                      >
+                        <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
+                        {allAvailableDepartments.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setIsDeptModalOpen(true)}
+                        className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer shadow-2xs"
+                        title="Quản lý danh sách Bộ môn / Đơn vị phụ trách"
+                      >
+                        <Building2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sort Dropdown */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Sắp xếp:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e: any) => setSortBy(e.target.value)}
+                      className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-2xs"
+                    >
+                      <option value="PERIODS_DESC">Số tiết dạy nhiều nhất</option>
+                      <option value="NAME_ASC">Họ và Tên (A - Z)</option>
+                      <option value="COURSES_DESC">Số học phần nhiều nhất</option>
+                      <option value="CLASSES_DESC">Số lớp nhiều nhất</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Filter by Department */}
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={departmentFilter}
-                  onChange={(e) => setDepartmentFilter(e.target.value)}
-                  className="bg-slate-50 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[200px] truncate"
-                  title="Lọc theo Bộ môn / Đơn vị"
-                >
-                  <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
-                  {allAvailableDepartments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setIsDeptModalOpen(true)}
-                  className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer"
-                  title="Quản lý danh sách Bộ môn / Đơn vị phụ trách"
-                >
-                  <Building2 className="w-3.5 h-3.5" />
-                </button>
+              {/* ACTIVE FILTER RIBBON (DẢI PHẢN QUANG ĐẬM NỔI BẬT) */}
+              <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between flex-wrap gap-2.5 border border-slate-800">
+                <div className="flex items-center flex-wrap gap-2 text-xs">
+                  <span className="font-extrabold uppercase tracking-wider text-blue-300 text-[11px] flex items-center gap-1.5 bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0">
+                    <Filter className="w-3.5 h-3.5 text-blue-400" />
+                    ĐANG LỌC:
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                    {currentWeekObj?.title || 'Tất cả các tuần'}
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                    {genderFilter === 'ALL' ? 'Tất cả giảng viên' : genderFilter === 'THAY' ? '👨‍🏫 Chỉ Thầy' : '👩‍🏫 Chỉ Cô'}
+                  </span>
+                  {departmentFilter !== 'ALL' && (
+                    <span className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-black border border-indigo-400 ring-2 ring-indigo-400/20">
+                      BM: {departmentFilter}
+                    </span>
+                  )}
+                  {searchTerm.trim() && (
+                    <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold border border-amber-500/40">
+                      Tìm: &ldquo;{searchTerm}&rdquo;
+                    </span>
+                  )}
+                  <span className="px-2.5 py-1 bg-white/5 text-slate-300 rounded-lg font-medium border border-white/10 text-[11px]">
+                    Xếp theo: {sortBy === 'PERIODS_DESC' ? 'Tiết nhiều nhất' : sortBy === 'NAME_ASC' ? 'Tên A-Z' : sortBy === 'COURSES_DESC' ? 'Nhiều môn nhất' : 'Nhiều lớp nhất'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 ml-auto shrink-0">
+                  {hasActiveWorkloadFilters && (
+                    <button
+                      type="button"
+                      onClick={handleResetWorkloadFilters}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Đặt lại tất cả bộ lọc khối lượng"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Đặt lại bộ lọc</span>
+                    </button>
+                  )}
+                  <span className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-xs shadow-xs">
+                    Sẵn sàng theo dõi
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-2 self-end md:self-auto">
-              <span className="text-xs font-medium text-slate-500">Sắp xếp:</span>
-              <select
-                value={sortBy}
-                onChange={(e: any) => setSortBy(e.target.value)}
-                className="bg-slate-50 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="PERIODS_DESC">Số tiết dạy nhiều nhất</option>
-                <option value="NAME_ASC">Họ và Tên (A - Z)</option>
-                <option value="COURSES_DESC">Số học phần nhiều nhất</option>
-                <option value="CLASSES_DESC">Số lớp nhiều nhất</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Workload Table */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-600" />
-                  Bảng Chi Tiết Khối Lượng Giảng Dạy - {currentWeekObj?.title || 'Tất cả các tuần'}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Danh sách phân công giảng dạy, học phần, lớp học và các buổi giảng dạy chi tiết trong tuần
-                </p>
-              </div>
-              <div className="text-xs font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                Hiển thị: <strong className="text-blue-700">{filteredWorkloads.length}</strong> / {workloads.length} Thầy/Cô
-              </div>
-            </div>
+            {/* CARD-BODY: NỘI DUNG BẢNG KHỐI LƯỢNG GIẢNG DẠY BÁM BIÊN */}
+            <div className="card-body p-4 sm:p-5 space-y-4">
 
             {loading ? (
               <div className="h-64 bg-slate-100 rounded-2xl animate-pulse flex items-center justify-center text-slate-400 font-medium">
@@ -757,16 +876,13 @@ export const LecturerWorkloadView: React.FC = () => {
                                   {w.lecturerName}
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5">{w.department}</div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-mono font-bold">
-                                    {w.lecturerCode}
-                                  </span>
-                                  {w.email && (
-                                    <span className="text-[11px] text-slate-400 truncate max-w-[150px]">
+                                {w.email && (
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[11px] text-slate-400 truncate max-w-[180px]">
                                       {w.email}
                                     </span>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -846,6 +962,7 @@ export const LecturerWorkloadView: React.FC = () => {
               </div>
             )}
           </div>
+          </div>
         </div>
       )}
 
@@ -888,122 +1005,184 @@ export const LecturerWorkloadView: React.FC = () => {
             </div>
           )}
 
-          {/* Lecturers Management Table */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-5">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-blue-600" />
-                  Danh Sách Giảng Viên & Quản Lý Tài Khoản ({lecturers.length})
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Lưu trữ hồ sơ học vị, liên kết tài khoản đăng nhập cho Thầy/Cô và phân quyền giảng dạy
-                </p>
-              </div>
-
-              {/* Filter Controls */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Search Box */}
-                <div className="relative min-w-[220px]">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm Thầy/Cô, mã, email, tài khoản..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+          {/* Master Card: Quản Lý Giảng Viên & Tài Khoản */}
+          <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-md overflow-hidden border-t-4 border-t-blue-600">
+            {/* CARD-HEADER: BỘ LỌC NỔI BẬT */}
+            <div className="card-header bg-gradient-to-b from-blue-50/70 via-slate-50/90 to-slate-100/95 border-b-2 border-slate-300 p-4 sm:p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm ring-4 ring-blue-500/20 shrink-0">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide">
+                      Danh Sách Giảng Viên & Quản Lý Tài Khoản
+                    </h2>
+                    <p className="text-xs text-slate-600 font-medium mt-0.5">
+                      Lưu trữ hồ sơ học vị, liên kết tài khoản đăng nhập cho Thầy/Cô và phân quyền giảng dạy
+                    </p>
+                  </div>
                 </div>
 
-                {/* Filter by Salutation */}
-                <select
-                  value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ALL">Tất cả danh xưng</option>
-                  <option value="THAY">Chỉ Thầy</option>
-                  <option value="CO">Chỉ Cô</option>
-                </select>
+                <div className="text-xs font-bold text-slate-700 bg-white/90 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                  Hiển thị: <strong className="text-blue-700 font-black">{filteredLecturers.length}</strong> / {lecturers.length} Thầy/Cô
+                </div>
+              </div>
 
-                {/* Filter by Account Linkage */}
-                <select
-                  value={accountFilter}
-                  onChange={(e) => setAccountFilter(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ALL">Tất cả tài khoản</option>
-                  <option value="HAS_ACCOUNT">Đã có tài khoản</option>
-                  <option value="NO_ACCOUNT">Chưa có tài khoản</option>
-                </select>
+              {/* Filters Control Box */}
+              <div className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs">
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Search Box */}
+                  <div className="relative min-w-[240px] max-w-sm flex-1 sm:flex-initial">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Tìm Thầy/Cô, mã, email, tài khoản..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-7 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-2xs"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-                {/* Filter by Department */}
-                <div className="flex items-center gap-1">
+                  {/* Title / Prefix Filter */}
+                  <div className="inline-flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-black">
+                    <button
+                      onClick={() => setGenderFilter('ALL')}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        genderFilter === 'ALL'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      onClick={() => setGenderFilter('THAY')}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        genderFilter === 'THAY'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      👨‍🏫 Thầy
+                    </button>
+                    <button
+                      onClick={() => setGenderFilter('CO')}
+                      className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                        genderFilter === 'CO'
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      👩‍🏫 Cô
+                    </button>
+                  </div>
+
+                  {/* Filter by Account Linkage */}
                   <select
-                    value={departmentFilter}
-                    onChange={(e) => setDepartmentFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[200px] truncate"
+                    value={accountFilter}
+                    onChange={(e) => setAccountFilter(e.target.value as any)}
+                    className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-2xs"
                   >
-                    <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
-                    {allAvailableDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
+                    <option value="ALL">Tất cả tài khoản</option>
+                    <option value="HAS_ACCOUNT">Đã có tài khoản</option>
+                    <option value="NO_ACCOUNT">Chưa có tài khoản</option>
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setIsDeptModalOpen(true)}
-                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer"
-                    title="Quản lý danh sách Bộ môn / Đơn vị"
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                  </button>
+
+                  {/* Filter by Department */}
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={departmentFilter}
+                      onChange={(e) => setDepartmentFilter(e.target.value)}
+                      className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 max-w-[200px] truncate shadow-2xs"
+                    >
+                      <option value="ALL">Tất cả Bộ môn / Đơn vị</option>
+                      {allAvailableDepartments.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeptModalOpen(true)}
+                      className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition cursor-pointer shadow-2xs"
+                      title="Quản lý danh sách Bộ môn / Đơn vị"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTIVE FILTER RIBBON (DẢI PHẢN QUANG ĐẬM NỔI BẬT) */}
+              <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between flex-wrap gap-2.5 border border-slate-800">
+                <div className="flex items-center flex-wrap gap-2 text-xs">
+                  <span className="font-extrabold uppercase tracking-wider text-blue-300 text-[11px] flex items-center gap-1.5 bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0">
+                    <Filter className="w-3.5 h-3.5 text-blue-400" />
+                    ĐANG LỌC:
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                    {genderFilter === 'ALL' ? 'Tất cả danh xưng' : genderFilter === 'THAY' ? '👨‍🏫 Chỉ Thầy' : '👩‍🏫 Chỉ Cô'}
+                  </span>
+                  <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                    {accountFilter === 'ALL' ? 'Tất cả trạng thái tài khoản' : accountFilter === 'HAS_ACCOUNT' ? '🔑 Đã liên kết tài khoản' : '⏳ Chưa có tài khoản'}
+                  </span>
+                  {departmentFilter !== 'ALL' && (
+                    <span className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-black border border-indigo-400 ring-2 ring-indigo-400/20">
+                      BM: {departmentFilter}
+                    </span>
+                  )}
+                  {searchTerm.trim() && (
+                    <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold border border-amber-500/40">
+                      Tìm: &ldquo;{searchTerm}&rdquo;
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 ml-auto shrink-0">
+                  {hasActiveLecturerFilters && (
+                    <button
+                      type="button"
+                      onClick={handleResetLecturerFilters}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Đặt lại tất cả bộ lọc giảng viên"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Đặt lại bộ lọc</span>
+                    </button>
+                  )}
+                  <span className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-xs shadow-xs">
+                    Sẵn sàng theo dõi
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-600 uppercase tracking-wider text-xs border-y border-slate-200">
-                    <th className="py-3.5 px-5 font-bold">Họ và Tên Giảng Viên</th>
-                    <th className="py-3.5 px-4 font-bold">Mã GV</th>
-                    <th className="py-3.5 px-4 font-bold">Bộ Môn</th>
-                    <th className="py-3.5 px-4 font-bold">Liên Hệ</th>
-                    <th className="py-3.5 px-4 font-bold">Tài Khoản Liên Kết</th>
-                    <th className="py-3.5 px-4 font-bold text-center">Trạng Thái</th>
-                    <th className="py-3.5 px-5 font-bold text-right">Thao Tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {lecturers
-                    .filter((l) => {
-                      const term = searchTerm.toLowerCase().trim();
-                      const matchSearch =
-                        !term ||
-                        l.fullName.toLowerCase().includes(term) ||
-                        (l.lecturerCode && l.lecturerCode.toLowerCase().includes(term)) ||
-                        (l.department && l.department.toLowerCase().includes(term)) ||
-                        (l.email && l.email.toLowerCase().includes(term)) ||
-                        (l.username && l.username.toLowerCase().includes(term));
-
-                      const matchGender =
-                        genderFilter === 'ALL' ||
-                        (genderFilter === 'THAY' && l.fullName.toLowerCase().startsWith('thầy')) ||
-                        (genderFilter === 'CO' && l.fullName.toLowerCase().startsWith('cô'));
-
-                      const matchAccount =
-                        accountFilter === 'ALL' ||
-                        (accountFilter === 'HAS_ACCOUNT' && l.hasAccount) ||
-                        (accountFilter === 'NO_ACCOUNT' && !l.hasAccount);
-
-                      const matchDept =
-                        departmentFilter === 'ALL' || (l.department && l.department.includes(departmentFilter));
-
-                      return matchSearch && matchGender && matchAccount && matchDept;
-                    })
-                    .map((lec) => {
+            {/* CARD-BODY: BẢNG GIẢNG VIÊN */}
+            <div className="card-body p-4 sm:p-5">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 uppercase tracking-wider text-xs border-y border-slate-200">
+                      <th className="py-3.5 px-5 font-bold">Họ và Tên Giảng Viên</th>
+                      <th className="py-3.5 px-4 font-bold">Bộ Môn</th>
+                      <th className="py-3.5 px-4 font-bold">Liên Hệ</th>
+                      <th className="py-3.5 px-4 font-bold">Tài Khoản Liên Kết</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Trạng Thái</th>
+                      <th className="py-3.5 px-5 font-bold text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredLecturers.map((lec) => {
                       const isThay = lec.fullName.toLowerCase().startsWith('thầy');
                       const isCo = lec.fullName.toLowerCase().startsWith('cô');
 
@@ -1027,16 +1206,8 @@ export const LecturerWorkloadView: React.FC = () => {
                                 <div className="font-bold text-slate-900 text-sm">
                                   {lec.fullName}
                                 </div>
-                                <div className="text-[11px] text-slate-400 font-mono mt-0.5">ID: {lec.id}</div>
                               </div>
                             </div>
-                          </td>
-
-                          {/* Code */}
-                          <td className="py-4 px-4">
-                            <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                              {lec.lecturerCode}
-                            </span>
                           </td>
 
                           {/* Department */}
@@ -1181,6 +1352,7 @@ export const LecturerWorkloadView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -1387,19 +1559,6 @@ export const LecturerWorkloadView: React.FC = () => {
                 <p className="text-[11px] text-slate-400 mt-1">
                   Nên kèm danh xưng "Thầy" hoặc "Cô" để hệ thống tự động nhận diện và phân loại.
                 </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mã Giảng Viên
-                </label>
-                <input
-                  type="text"
-                  value={formData.lecturerCode}
-                  onChange={(e) => setFormData({ ...formData, lecturerCode: e.target.value })}
-                  placeholder="VD: GV001"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
               </div>
 
               {/* Department / Unit Field */}
@@ -1666,7 +1825,7 @@ export const LecturerWorkloadView: React.FC = () => {
                     Quản Lý Tài Khoản Giảng Viên
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {managingAccountLecturer.fullName} ({managingAccountLecturer.lecturerCode})
+                    {managingAccountLecturer.fullName}
                   </p>
                 </div>
               </div>
@@ -1922,7 +2081,7 @@ export const LecturerWorkloadView: React.FC = () => {
               <h3 className="font-bold text-slate-900 text-base">Xác Nhận Xóa Giảng Viên</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Bạn có chắc chắn muốn xóa giảng viên{' '}
-                <strong className="text-rose-600">{deletingLecturer.fullName}</strong> ({deletingLecturer.lecturerCode}) khỏi hệ thống?
+                <strong className="text-rose-600">{deletingLecturer.fullName}</strong> khỏi hệ thống?
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">

@@ -57,7 +57,7 @@ const AppContent: React.FC = () => {
       case 'data_sources':
         return currentRole === 'ADMIN' ? <DataSourceAdminView /> : <TimetableView />;
       default:
-        return <TimetableView />;
+        return <HomeRoleSelectionView />;
     }
   };
 
@@ -102,15 +102,28 @@ const AppContent: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <button
+              onClick={() => setActiveTab('home')}
+              className={`font-semibold hover:underline cursor-pointer ${
+                activeTab === 'home' ? 'text-blue-700 font-bold' : 'text-slate-600'
+              }`}
+            >
+              Trang chủ
+            </button>
+            <span className="text-slate-300">•</span>
+            <button
               onClick={() => setActiveTab('timetable')}
-              className="text-blue-700 font-semibold hover:underline"
+              className={`font-semibold hover:underline cursor-pointer ${
+                activeTab === 'timetable' ? 'text-blue-700 font-bold' : 'text-slate-600'
+              }`}
             >
               Thời khóa biểu
             </button>
             <span className="text-slate-300">•</span>
             <button
               onClick={() => setActiveTab('exams')}
-              className="hover:text-slate-800 transition"
+              className={`hover:text-slate-800 transition cursor-pointer ${
+                activeTab === 'exams' ? 'text-blue-700 font-bold' : 'text-slate-600'
+              }`}
             >
               Lịch thi
             </button>

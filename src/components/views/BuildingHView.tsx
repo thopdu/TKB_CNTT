@@ -9,6 +9,10 @@ import {
   AlertTriangle,
   X,
   Search,
+  Filter,
+  RotateCcw,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import {
@@ -127,6 +131,21 @@ export const BuildingHView: React.FC = () => {
       ? `Tuần 0${currentWeekObj.weekNumber} (${currentWeekObj.dateRange || '24/08/2026 - 29/08/2026'})`
       : 'Tuần 05 (24/08/2026 - 29/08/2026)');
 
+  const hasActiveFilters =
+    selectedFloor !== 'ALL' ||
+    dayFilter !== 'ALL' ||
+    sessionFilter !== 'ALL' ||
+    statusFilter !== 'ALL' ||
+    searchQuery.trim() !== '';
+
+  const handleResetFilters = () => {
+    setSelectedFloor('ALL');
+    setDayFilter('ALL');
+    setSessionFilter('ALL');
+    setStatusFilter('ALL');
+    setSearchQuery('');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in pb-12">
       {/* ========================================================================= */}
@@ -143,133 +162,223 @@ export const BuildingHView: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. MA TRẬN NHIỆT PHÂN BỔ PHÒNG HỌC NHÀ H (THEO THỨ & BUỔI)               */}
       {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              Ma Trận Nhiệt Phân Bổ Phòng Học Nhà H (Theo Thứ & Buổi)
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Bảng trực quan 12 phòng × 7 ngày × 2 buổi (Sáng/Chiều). Nhấp vào ô bất kỳ để xem chi tiết danh sách lớp.
-            </p>
+      <div className="bg-white rounded-3xl border-2 border-slate-300 shadow-md overflow-hidden border-t-4 border-t-blue-600">
+        {/* CARD-HEADER: BỘ LỌC NỔI BẬT & CHÚ GIẢI MA TRẬN */}
+        <div className="card-header bg-gradient-to-b from-blue-50/70 via-slate-50/90 to-slate-100/95 border-b-2 border-slate-300 p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm ring-4 ring-blue-500/20 shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wide">
+                    Ma Trận Nhiệt Phân Bổ Phòng Học Nhà H
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-2xs">
+                    12 PHÒNG × 7 NGÀY
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 font-medium mt-0.5">
+                  Theo dõi tình trạng trống, tối ưu và xung đột trùng phòng ({currentWeekDisplayTitle})
+                </p>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-2 text-[11px] flex-wrap bg-white/90 p-1.5 px-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-slate-100 border border-slate-300 inline-block" />
+                <span className="text-slate-600 font-semibold">Trống</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-300 inline-block" />
+                <span className="text-emerald-800 font-black">1 Lớp</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-amber-100 border border-amber-300 inline-block" />
+                <span className="text-amber-800 font-black">2 Lớp</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded bg-rose-500 border border-rose-600 inline-block" />
+                <span className="text-rose-700 font-black">&gt; 2 Lớp (TRÙNG)</span>
+              </div>
+            </div>
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center gap-2.5 text-[11px] flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="w-3.5 h-3.5 rounded bg-slate-100 border border-slate-300 inline-block" />
-              <span className="text-slate-600">Trống (0 lớp)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3.5 h-3.5 rounded bg-emerald-100 border border-emerald-300 inline-block" />
-              <span className="text-emerald-800 font-bold">1 Lớp (Tối ưu)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3.5 h-3.5 rounded bg-amber-100 border border-amber-300 inline-block" />
-              <span className="text-amber-800 font-bold">2 Lớp (Bình thường)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3.5 h-3.5 rounded bg-rose-500 border border-rose-600 inline-block" />
-              <span className="text-rose-700 font-extrabold">&gt; 2 Lớp (TRÙNG PHÒNG)</span>
-            </div>
-          </div>
-        </div>
+          {/* Filters Control Box */}
+          <div className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs space-y-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Floor Filter */}
+              <div>
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block mb-1">
+                  Lọc Theo Tầng:
+                </label>
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                  {[
+                    { id: 'ALL', label: 'Tất cả' },
+                    { id: 1, label: 'T.1' },
+                    { id: 2, label: 'T.2' },
+                    { id: 3, label: 'T.3' },
+                  ].map((fl) => (
+                    <button
+                      key={fl.id}
+                      onClick={() => setSelectedFloor(fl.id as any)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-black transition text-center cursor-pointer ${
+                        selectedFloor === fl.id
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      {fl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        {/* Filters Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Floor Filter */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-              Lọc Theo Tầng:
-            </label>
-            <div className="flex items-center gap-1">
-              {[
-                { id: 'ALL', label: 'Tất cả' },
-                { id: 1, label: 'Tầng 1' },
-                { id: 2, label: 'Tầng 2' },
-                { id: 3, label: 'Tầng 3' },
-              ].map((fl) => (
-                <button
-                  key={fl.id}
-                  onClick={() => setSelectedFloor(fl.id as any)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition text-center ${
-                    selectedFloor === fl.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
+              {/* Day Filter */}
+              <div>
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block mb-1">
+                  Lọc Theo Thứ:
+                </label>
+                <select
+                  value={dayFilter}
+                  onChange={(e) => setDayFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 outline-none shadow-2xs"
                 >
-                  {fl.label}
-                </button>
-              ))}
+                  <option value="ALL">Tất cả các ngày (T2 - CN)</option>
+                  {DAYS.map((d) => (
+                    <option key={d.key} value={d.key}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Session Filter */}
+              <div>
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block mb-1">
+                  Buổi Học:
+                </label>
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                  {[
+                    { id: 'ALL', label: 'Cả ngày' },
+                    { id: 'MORNING', label: 'Sáng' },
+                    { id: 'AFTERNOON', label: 'Chiều' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSessionFilter(s.id as any)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-black transition text-center cursor-pointer ${
+                        sessionFilter === s.id
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-700 hover:text-slate-900'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block mb-1">
+                  Trạng Thái Phòng:
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 outline-none shadow-2xs"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="CONFLICT">🚨 Phòng TRÙNG (&gt; 2 lớp)</option>
+                  <option value="OPTIMAL">✓ Phòng 1 lớp (Tối ưu)</option>
+                  <option value="DOUBLE">⚬ Phòng 2 lớp (Bình thường)</option>
+                  <option value="EMPTY">⚪ Phòng trống</option>
+                </select>
+              </div>
+
+              {/* Search Box */}
+              <div>
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block mb-1">
+                  Tìm Kiếm Phòng / Lớp:
+                </label>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Mã phòng, tên lớp, GV..."
+                    className="w-full pl-8 pr-7 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 outline-none shadow-2xs placeholder:text-slate-400"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Day Filter */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-              Lọc Theo Thứ:
-            </label>
-            <select
-              value={dayFilter}
-              onChange={(e) => setDayFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="ALL">Tất cả các ngày (T2 - CN)</option>
-              {DAYS.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-              Trạng Thái Phân Bổ:
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="CONFLICT">🚨 Phòng TRÙNG (&gt; 2 lớp)</option>
-              <option value="OPTIMAL">✓ Phòng 1 lớp (Tối ưu)</option>
-              <option value="DOUBLE">⚬ Phòng 2 lớp (Bình thường)</option>
-              <option value="EMPTY">⚪ Phòng trống</option>
-            </select>
-          </div>
-
-          {/* Search Box */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-              Tìm Kiếm Phòng / Lớp:
-            </label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Nhập mã phòng, tên lớp, GV..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-slate-400"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+          {/* ACTIVE FILTER RIBBON (DẢI PHẢN QUANG ĐẬM NỔI BẬT) */}
+          <div className="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center justify-between flex-wrap gap-2.5 border border-slate-800">
+            <div className="flex items-center flex-wrap gap-2 text-xs">
+              <span className="font-extrabold uppercase tracking-wider text-blue-300 text-[11px] flex items-center gap-1.5 bg-blue-950 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-blue-400" />
+                ĐANG LỌC:
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                {selectedFloor === 'ALL' ? 'Tất cả các tầng' : `Tầng ${selectedFloor}`}
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                {dayFilter === 'ALL' ? 'Tất cả các thứ' : DAYS.find((d) => d.key === dayFilter)?.label || dayFilter}
+              </span>
+              <span className="px-2.5 py-1 bg-white/10 text-white rounded-lg font-bold border border-white/15">
+                {sessionFilter === 'ALL' ? 'Cả ngày (Sáng & Chiều)' : sessionFilter === 'MORNING' ? 'Buổi Sáng' : 'Buổi Chiều'}
+              </span>
+              {statusFilter !== 'ALL' && (
+                <span className="px-2.5 py-1 bg-blue-600 text-white rounded-lg font-black border border-blue-400 ring-2 ring-blue-400/20">
+                  {statusFilter === 'CONFLICT' && 'Trùng phòng (> 2 lớp)'}
+                  {statusFilter === 'OPTIMAL' && '1 Lớp tối ưu'}
+                  {statusFilter === 'DOUBLE' && '2 Lớp bình thường'}
+                  {statusFilter === 'EMPTY' && 'Phòng trống'}
+                </span>
+              )}
+              {searchQuery.trim() && (
+                <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold border border-amber-500/40">
+                  Tìm: &ldquo;{searchQuery}&rdquo;
+                </span>
               )}
             </div>
+
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Đặt lại tất cả bộ lọc"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Đặt lại bộ lọc</span>
+                </button>
+              )}
+              <span className="bg-emerald-500 text-slate-950 font-black px-2.5 py-0.5 rounded-lg text-xs shadow-xs">
+                Sẵn sàng theo dõi
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Matrix Table */}
-        <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+        {/* CARD-BODY: NỘI DUNG MA TRẬN NHIỆT BÁM BIÊN */}
+        <div className="card-body p-4 sm:p-5">
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
           <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
             <thead>
               <tr className="bg-slate-100 text-slate-700 border-b border-slate-200">
@@ -434,6 +543,7 @@ export const BuildingHView: React.FC = () => {
               })}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 

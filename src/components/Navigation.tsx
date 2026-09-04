@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Home,
   CalendarDays,
   GraduationCap,
   Building2,
@@ -17,6 +18,7 @@ export const Navigation: React.FC = () => {
 
   const getNavItems = () => {
     const items = [
+      { id: 'home', label: 'Trang chủ', shortLabel: 'Trang chủ', icon: Home, desc: 'Cổng thông tin & Chọn vai trò' },
       { id: 'timetable', label: 'Thời khóa biểu', shortLabel: 'TKB', icon: CalendarDays, desc: 'Lịch tuần & Lưới TKB' },
       { id: 'exams', label: 'Lịch thi', shortLabel: 'Lịch thi', icon: GraduationCap, desc: 'Kỳ thi & Ca thi' },
     ];
@@ -53,11 +55,16 @@ export const Navigation: React.FC = () => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const isHome = item.id === 'home';
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`cursor-pointer flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                  title={item.label}
+                  aria-label={item.label}
+                  className={`cursor-pointer flex items-center justify-center ${
+                    isHome ? 'px-2.5 py-1.5' : 'gap-2 px-3.5 py-1.5'
+                  } rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-[#085584] text-white shadow-xs'
                       : 'text-slate-700 hover:text-[#085584] hover:bg-slate-100'
@@ -65,7 +72,7 @@ export const Navigation: React.FC = () => {
                   style={isActive ? { backgroundColor: '#085584' } : undefined}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                  <span>{item.label}</span>
+                  {!isHome && <span>{item.label}</span>}
                 </button>
               );
             })}
